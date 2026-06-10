@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- FOR PWA  -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#075620">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="JBC Voting">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <!-- -------- -->
+
+
+  <title>JBC — My Votes</title>
+  <link rel="stylesheet" href="myvotes.css" />
+
+
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="header-left">
+        <button class="btn-back" id="btnBack" aria-label="Back to stations">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </button>
+        <div class="logo-wrap">
+          <img src="JBC_Logo.png" alt="JBC Logo">
+        </div>
+        <div class="header-text">
+          <span class="header-title">My Nominations</span>
+          <span class="header-batch" id="headerBatch">—</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <span class="member-name" id="memberName">—</span>
+        <button class="btn-logout" id="btnLogout">Log out</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <div class="page-intro">
+      <h1 class="page-title">My Nominations</h1>
+      <p class="page-desc">A summary of all your current nominations across every station in this batch. Click <strong>Edit</strong> on any station to change your votes while it is still open.</p>
+    </div>
+
+    <!-- Summary chips -->
+    <div class="summary-strip" id="summaryStrip">
+      <div class="summary-chip" id="chipTotal">
+        <span class="chip-num" id="chipTotalNum">—</span>
+        <span class="chip-lbl">Stations voted</span>
+      </div>
+      <div class="summary-chip" id="chipNominees">
+        <span class="chip-num" id="chipNomineesNum">—</span>
+        <span class="chip-lbl">Total nominees</span>
+      </div>
+      <div class="summary-chip" id="chipPending">
+        <span class="chip-num" id="chipPendingNum">—</span>
+        <span class="chip-lbl">Stations pending</span>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="state-box" id="stateLoading">
+      <div class="spinner"></div>
+      <span>Loading your nominations…</span>
+    </div>
+
+    <!-- Error -->
+    <div class="state-box hidden" id="stateError">
+      <div class="state-icon">⚠</div>
+      <p id="stateErrorText">Failed to load nominations.</p>
+      <button class="btn-retry" id="btnRetry">Try again</button>
+    </div>
+
+    <!-- Empty -->
+    <div class="state-box hidden" id="stateEmpty">
+      <div class="state-icon">📋</div>
+      <p>You haven't cast any nominations yet.<br>Go to <a href="stations.html" class="inline-link">Stations</a> to begin voting.</p>
+    </div>
+
+    <!-- Votes list -->
+    <div class="votes-out hidden" id="votesOut"></div>
+
+  </main>
+
+  <!-- TOAST -->
+  <div class="toast hidden" id="toast">
+    <span class="toast-icon">✓</span>
+    <span id="toastText">Done.</span>
+  </div>
+
+  <script src="api.js"></script>
+  <script src="myvotes.js"></script>
+
+  <!-- PWA SERVICE WORKER -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+          .then(() => console.log('JBC: Service worker registered.'))
+          .catch(err => console.log('JBC: Service worker error:', err));
+      });
+    }
+  </script>
+  <!-- ------------------- -->
+
+</body>
+</html>

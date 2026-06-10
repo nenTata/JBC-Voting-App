@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- FOR PWA  -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#075620">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="JBC Voting">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <!-- -------- -->
+   
+
+
+  <title>JBC — Deliberation Stations</title>
+  <link rel="stylesheet" href="stations.css" />
+
+
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="header-left">
+        <div class="logo-wrap">
+          <img src="JBC_Logo.png" alt="JBC Logo">
+        </div>
+        <div class="header-text">
+          <span class="header-title">Judicial and Bar Council</span>
+          <span class="header-batch" id="batchLabel">Loading…</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <span class="member-name" id="memberName">—</span>
+        <button class="btn-logout" id="btnLogout">Log out</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <div class="page-intro">
+      <h1 class="page-title">Deliberation Stations</h1>
+      <p class="page-desc">Select a station below to view applicants and cast your nominations.</p>
+    </div>
+
+    <!-- Filter pills -->
+    <div class="filter-bar" id="filterBar">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="Appellate">Appellate</button>
+      <button class="filter-btn" data-filter="Lower Court">Lower Court</button>
+      <button class="filter-btn" data-filter="open">Open</button>
+      <button class="filter-btn" data-filter="locked">Locked</button>
+    </div>
+
+    <!-- Loading -->
+    <div class="state-box" id="stateLoading">
+      <div class="spinner"></div>
+      <span>Loading stations…</span>
+    </div>
+
+    <!-- Error -->
+    <div class="state-box hidden" id="stateError">
+      <div class="state-icon">⚠</div>
+      <p id="stateErrorText">Failed to load stations.</p>
+      <button class="btn-retry" id="btnRetry">Try again</button>
+    </div>
+
+    <!-- Empty -->
+    <div class="state-box hidden" id="stateEmpty">
+      <div class="state-icon">📋</div>
+      <p>No stations are assigned to this batch yet.</p>
+    </div>
+
+    <!-- No-match (filtered) -->
+    <div class="state-box hidden" id="stateNoMatch">
+      <div class="state-icon">🔍</div>
+      <p>No stations match this filter.</p>
+    </div>
+
+    <!-- Stations output -->
+    <div class="stations-out hidden" id="stationsOut"></div>
+
+  </main>
+
+  <script src="api.js"></script>
+  <script src="stations.js"></script>
+
+  <!-- PWA SERVICE WORKER -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+          .then(() => console.log('JBC: Service worker registered.'))
+          .catch(err => console.log('JBC: Service worker error:', err));
+      });
+    }
+  </script>
+  <!-- ------------------- -->
+
+</body>
+</html>

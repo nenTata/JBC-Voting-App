@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- FOR PWA  -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#075620">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="JBC Voting">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <!-- -------- -->
+
+  <title>JBC — Live Dashboard</title>
+  <link rel="stylesheet" href="dashboard.css" />
+
+  
+
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="header-left">
+        <div class="logo-wrap">
+          <img src="JBC_Logo.png" alt="JBC Logo">
+        </div>
+        <div class="header-text">
+          <span class="header-title">Live Deliberation Dashboard</span>
+          <span class="header-batch" id="headerBatch">—</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="refresh-status" id="refreshStatus">
+          <span class="refresh-dot" id="refreshDot"></span>
+          <span id="refreshLabel">Live</span>
+        </div>
+        <span class="last-updated" id="lastUpdated">—</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- Loading -->
+    <div class="state-box" id="stateLoading">
+      <div class="spinner"></div>
+      <span>Loading dashboard…</span>
+    </div>
+
+    <!-- Error -->
+    <div class="state-box hidden" id="stateError">
+      <div class="state-icon">⚠</div>
+      <p id="stateErrorText">Failed to load dashboard.</p>
+    </div>
+
+    <!-- Summary bar -->
+    <div class="summary-bar hidden" id="summaryBar">
+      <div class="sum-chip">
+        <span class="sum-num" id="sumTotal">—</span>
+        <span class="sum-lbl">Total Stations</span>
+      </div>
+      <div class="sum-chip">
+        <span class="sum-num" id="sumLocked">—</span>
+        <span class="sum-lbl">Locked</span>
+      </div>
+      <div class="sum-chip">
+        <span class="sum-num" id="sumOpen">—</span>
+        <span class="sum-lbl">Open</span>
+      </div>
+      <div class="sum-chip">
+        <span class="sum-num" id="sumNomAll">—</span>
+        <span class="sum-lbl">Nominate All</span>
+      </div>
+    </div>
+
+    <!-- Dashboard output -->
+    <div class="dashboard-out hidden" id="dashboardOut"></div>
+
+  </main>
+
+  <script src="api.js"></script>
+  <script src="dashboard.js"></script>
+
+  <!-- PWA SERVICE WORKER -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+          .then(() => console.log('JBC: Service worker registered.'))
+          .catch(err => console.log('JBC: Service worker error:', err));
+      });
+    }
+  </script>
+  <!-- ------------------- -->
+
+</body>
+</html>

@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+    <!-- FOR PWA  -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#075620">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="JBC Voting">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <!-- -------- -->
+
+
+    <title>JBC — Admin Panel</title>
+    <link rel="stylesheet" href="admin.css" />
+
+  
+    
+  <!-- FONT AWESOME -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Roboto+Slab:wght@100..900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+
+    
+  </head>
+  <body>
+    <!-- HEADER -->
+    <header class="header">
+      <div class="header-inner">
+        <div class="header-left">
+          <div class="logo-wrap">
+            <img src="JBC_Logo.png" alt="JBC Logo">
+          </div>
+          <div class="header-text">
+            <span class="header-title">Admin Panel</span>
+            <span class="header-batch" id="headerBatch">—</span>
+          </div>
+        </div>
+        <div class="header-right">
+          <a href="dashboard.html" class="btn-dashboard" target="_blank">Live Dashboard ↗</a>
+          <span class="admin-name" id="adminName">—</span>
+          <button class="btn-logout" id="btnLogout">Log out</button>
+          <!-- Hamburger — only visible on mobile via CSS -->
+          <button class="btn-hamburger" id="btnHamburger" aria-label="Open menu">
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="layout">
+      <!-- SIDEBAR NAV (desktop) -->
+      <nav class="sidebar">
+        <button class="nav-item active" data-tab="batches">
+          <span class="nav-icon">📦</span><span>Batches</span>
+        </button>
+        <button class="nav-item" data-tab="stations">
+          <span class="nav-icon">🏛</span><span>Stations</span>
+        </button>
+        <button class="nav-item" data-tab="applicants">
+          <span class="nav-icon">👤</span><span>Applicants</span>
+        </button>
+        <button class="nav-item" data-tab="members">
+          <span class="nav-icon">👥</span><span>Members</span>
+        </button>
+        <button class="nav-item" data-tab="nominate-all">
+          <span class="nav-icon">★</span><span>Nominate All</span>
+        </button>
+        <button class="nav-item" data-tab="locks">
+          <span class="nav-icon">🔒</span><span>Lock Control</span>
+        </button>
+        <button class="nav-item" data-tab="settings">
+          <span class="nav-icon">⚙</span><span>Settings</span>
+        </button>
+        <button class="nav-item" data-tab="report">
+          <span class="nav-icon">📄</span><span>Report</span>
+        </button>
+      </nav>
+
+      <!-- CONTENT AREA -->
+      <main class="content">
+        <!-- ── BATCHES ── -->
+        <section class="tab-section" id="tab-batches">
+          <div class="section-header">
+            <h2 class="section-title">Batch Management</h2>
+            <button class="btn-primary" id="btnNewBatch">+ New Batch</button>
+          </div>
+          <div class="form-card hidden" id="newBatchForm">
+            <h3 class="form-title" id="batchFormTitle">Create Batch</h3>
+            <input type="hidden" id="editBatchId" />
+            <div class="form-row">
+              <div class="field-group">
+                <label class="field-label">Batch Name *</label>
+                <input
+                  class="field-input"
+                  type="text"
+                  id="newBatchName"
+                  placeholder="e.g. March 2025 Deliberation"
+                />
+              </div>
+              <div class="field-group">
+                <label class="field-label">Date Start</label>
+                <input class="field-input" type="date" id="newBatchStart" />
+              </div>
+              <div class="field-group">
+                <label class="field-label">Date End</label>
+                <input class="field-input" type="date" id="newBatchEnd" />
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn-secondary" id="btnCancelBatch">Cancel</button>
+              <button class="btn-primary" id="btnSaveBatch">
+                Create Batch
+              </button>
+            </div>
+          </div>
+          <div id="batchList" class="data-list"></div>
+        </section>
+
+        <!-- ── STATIONS ── -->
+        <section class="tab-section hidden" id="tab-stations">
+          <div class="section-header">
+            <h2 class="section-title">Station Management</h2>
+            <button class="btn-primary" id="btnNewStation">
+              + Add Station
+            </button>
+          </div>
+
+          <!-- Add Station Form -->
+          <div class="form-card hidden" id="newStationForm">
+            <h3 class="form-title">Add Station to Master List</h3>
+            <div class="form-row">
+              <div class="field-group">
+                <label class="field-label">Court Category *</label>
+                <select class="field-input" id="newStationCategory">
+                  <option value="Appellate">Appellate</option>
+                  <option value="Lower Court">Lower Court</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Court Type *</label>
+                <select class="field-input" id="newStationType"></select>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Court Station Name *</label>
+                <input
+                  class="field-input"
+                  type="text"
+                  id="newStationName"
+                  placeholder="e.g. RTC Branch 1, Manila"
+                />
+              </div>
+              <div class="field-group">
+                <label class="field-label"
+                  >Region
+                  <span class="field-hint">(blank for Appellate)</span></label
+                >
+                <select class="field-input" id="newStationRegion">
+                  <option value="">(Appellate — leave blank)</option>
+                  <option>NCR</option>
+                  <option>CAR</option>
+                  <option>Region 1</option>
+                  <option>Region 2</option>
+                  <option>Region 3</option>
+                  <option>Region 4</option>
+                  <option>Region 5</option>
+                  <option>Region 6</option>
+                  <option>Region 7</option>
+                  <option>Region 8</option>
+                  <option>Region 9</option>
+                  <option>Region 10</option>
+                  <option>Region 11</option>
+                  <option>Region 12</option>
+                  <option>BARMM</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn-secondary" id="btnCancelStation">
+                Cancel
+              </button>
+              <button class="btn-primary" id="btnSaveStation">
+                Add Station
+              </button>
+            </div>
+          </div>
+
+          <!-- Station Sub-tabs -->
+          <div class="subtab-bar">
+            <button class="subtab-btn active" data-subtab="masterlist">
+              Master List
+            </button>
+            <button class="subtab-btn" data-subtab="assign">
+              Assign to Batch
+            </button>
+            <button class="subtab-btn" data-subtab="summary">
+              Batch Summary
+            </button>
+          </div>
+
+          <!-- Sub-tab: Master List -->
+          <div class="subtab-section" id="subtab-masterlist">
+            <div class="subtab-toolbar">
+              <span id="stationPageInfo" class="page-info"></span>
+              <div class="pagination-controls">
+                <button class="btn-secondary btn-sm" id="stationPrev">
+                  ← Prev
+                </button>
+                <button class="btn-secondary btn-sm" id="stationNext">
+                  Next →
+                </button>
+              </div>
+            </div>
+            <div id="masterStationList" class="data-list"></div>
+          </div>
+
+          <!-- Sub-tab: Assign to Batch -->
+          <div class="subtab-section hidden" id="subtab-assign">
+            <div
+              class="field-group"
+              style="max-width: 360px; margin-bottom: 20px"
+            >
+              <label class="field-label">Select Batch to Assign To</label>
+              <select class="field-input" id="assignBatchSelect">
+                <option value="">Select batch…</option>
+              </select>
+            </div>
+            <div class="assign-layout">
+              <div class="assign-station-list-wrap">
+                <p class="assign-hint">
+                  Select a batch above, then click <strong>+ Add</strong> next
+                  to each station.
+                </p>
+                <div id="assignStationList" class="data-list"></div>
+              </div>
+              <div id="stagedPanel" class="staged-panel hidden">
+                <div class="staged-panel-header">
+                  <div class="staged-panel-title">Staged for Assignment</div>
+                  <div id="stagedBatchName" class="staged-batch-name"></div>
+                  <div id="stagedCount" class="staged-count"></div>
+                </div>
+                <div id="stagedList" class="data-list"></div>
+                <button
+                  class="btn-primary"
+                  id="btnConfirmAssign"
+                  style="width: 100%; margin-top: 14px"
+                >
+                  ✓ Confirm Assign
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sub-tab: Batch Summary -->
+          <div class="subtab-section hidden" id="subtab-summary">
+            <div
+              class="field-group"
+              style="max-width: 360px; margin-bottom: 20px"
+            >
+              <label class="field-label">Select Batch to View</label>
+              <select class="field-input" id="summaryBatchSelect">
+                <option value="">Select batch…</option>
+              </select>
+            </div>
+            <div id="batchSummaryList" class="data-list"></div>
+          </div>
+        </section>
+
+        <!-- ── APPLICANTS ── -->
+        <section class="tab-section hidden" id="tab-applicants">
+          <div class="section-header">
+            <h2 class="section-title">Applicant Management</h2>
+            <button class="btn-primary" id="btnNewApplicant">
+              + Add Applicant
+            </button>
+          </div>
+          <div class="filter-row">
+            <label class="field-label" style="margin: 0; white-space: nowrap"
+              >Filter by Station:</label
+            >
+            <select
+              class="field-input"
+              id="applicantStationFilter"
+              style="flex: 1; max-width: 320px"
+            >
+              <option value="">All stations</option>
+            </select>
+          </div>
+          <div class="form-card hidden" id="newApplicantForm">
+            <h3 class="form-title" id="applicantFormTitle">Add Applicant</h3>
+            <input type="hidden" id="editApplicantId" />
+            <div class="form-row">
+              <div class="field-group">
+                <label class="field-label">Station *</label>
+                <select class="field-input" id="newApplicantStation">
+                  <option value="">Select station…</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Full Name *</label>
+                <input
+                  class="field-input"
+                  type="text"
+                  id="newApplicantName"
+                  placeholder="Full legal name"
+                />
+              </div>
+              <div class="field-group">
+                <label class="field-label"
+                  >Application No.
+                  <span class="field-hint">(optional)</span></label
+                >
+                <input
+                  class="field-input"
+                  type="text"
+                  id="newApplicantAppNo"
+                  placeholder="e.g. 2025-001"
+                />
+              </div>
+              <div class="field-group">
+                <label class="field-label"
+                  >Classification
+                  <span class="field-hint">(optional)</span></label
+                >
+                <select class="field-input" id="newApplicantCls">
+                  <option value="">Select…</option>
+                  <option>1st Preference</option>
+                  <option>2nd Preference</option>
+                  <option>Least Preferred</option>
+                  <option>Recently Appointed</option>
+                  <option>For Reporting</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label class="field-label"
+                  >Pre-Judicature Rating
+                  <span class="field-hint">(optional)</span></label
+                >
+                <input
+                  class="field-input"
+                  type="text"
+                  id="newApplicantBar"
+                  placeholder="e.g. 87.50"
+                />
+              </div>
+              <div class="field-group">
+                <label class="field-label"
+                  >Cases <span class="field-hint">(optional)</span></label
+                >
+                <input
+                  class="field-input"
+                  type="text"
+                  id="newApplicantCases"
+                  placeholder="Pending/decided cases info"
+                />
+              </div>
+              <div class="field-group">
+                <label class="field-label"
+                  >Teaching Experience
+                  <span class="field-hint">(optional)</span></label
+                >
+                <input
+                  class="field-input"
+                  type="text"
+                  id="newApplicantTeaching"
+                  placeholder="e.g. 5 years, UP Law"
+                />
+              </div>
+              <div class="field-group field-group--full">
+                <label class="field-label"
+                  >Other Credentials
+                  <span class="field-hint">(optional)</span></label
+                >
+                <input
+                  class="field-input"
+                  type="text"
+                  id="newApplicantOther"
+                  placeholder="Other notable credentials"
+                />
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn-secondary" id="btnCancelApplicant">
+                Cancel
+              </button>
+              <button class="btn-primary" id="btnSaveApplicant">
+                Save Applicant
+              </button>
+            </div>
+          </div>
+          <div id="applicantList" class="data-list"></div>
+        </section>
+
+        <!-- ── MEMBERS ── -->
+        <section class="tab-section hidden" id="tab-members">
+          <div class="section-header">
+            <h2 class="section-title">Member Management</h2>
+            <button class="btn-primary" id="btnNewMember">+ Add Member</button>
+          </div>
+          <div class="form-card hidden" id="newMemberForm">
+            <h3 class="form-title" id="memberFormTitle">Add Member</h3>
+            <input type="hidden" id="editMemberId" />
+            <div class="form-row">
+              <div class="field-group">
+                <label class="field-label">Full Name *</label>
+                <input
+                  class="field-input"
+                  type="text"
+                  id="newMemberName"
+                  placeholder="Full name"
+                />
+              </div>
+              <div class="field-group">
+                <label class="field-label">Email *</label>
+                <input
+                  class="field-input"
+                  type="email"
+                  id="newMemberEmail"
+                  placeholder="email@jbc.gov.ph"
+                />
+              </div>
+              <div class="field-group">
+                <label class="field-label">Password *</label>
+                <input
+                  class="field-input"
+                  type="text"
+                  id="newMemberPassword"
+                  placeholder="Temporary password"
+                />
+              </div>
+              <div class="field-group">
+                <label class="field-label">Role *</label>
+                <select class="field-input" id="newMemberRole">
+                  <option value="member">Member</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn-secondary" id="btnCancelMember">Cancel</button>
+              <button class="btn-primary" id="btnSaveMember">
+                Save Member
+              </button>
+            </div>
+          </div>
+          <div id="memberList" class="data-list"></div>
+        </section>
+
+        <!-- ── NOMINATE ALL ── -->
+        <section class="tab-section hidden" id="tab-nominate-all">
+          <div class="section-header">
+            <h2 class="section-title">Nominate All Control</h2>
+            <button class="btn-secondary" id="btnRefreshNA">Refresh</button>
+          </div>
+          <p class="section-desc">
+            Review member suggestions for Nominate All. Activate or deactivate
+            per station.
+          </p>
+          <div id="nominateAllList" class="data-list"></div>
+        </section>
+
+        <!-- ── LOCK CONTROL ── -->
+        <section class="tab-section hidden" id="tab-locks">
+          <div class="section-header">
+            <h2 class="section-title">Lock Control</h2>
+            <div class="header-btn-group">
+              <button class="btn-danger" id="btnLockAll">
+                Lock All Stations
+              </button>
+              <button class="btn-secondary" id="btnUnlockAll">
+                Unlock All
+              </button>
+            </div>
+          </div>
+          <p class="section-desc">
+            Lock a station to prevent members from changing votes. Locked
+            stations are read-only.
+          </p>
+          <div id="lockList" class="data-list"></div>
+        </section>
+
+        <!-- ── SETTINGS ── -->
+        <section class="tab-section hidden" id="tab-settings">
+          <div class="section-header">
+            <h2 class="section-title">Settings</h2>
+          </div>
+          <div class="form-card">
+            <h3 class="form-title">Global Nomination Limit</h3>
+            <p class="form-desc">
+              Maximum number of times one applicant can be nominated across all
+              stations in the active batch. Set to 0 to disable the limit.
+            </p>
+            <div class="form-row">
+              <div class="field-group">
+                <label class="field-label">Nomination Limit</label>
+                <input
+                  class="field-input"
+                  type="number"
+                  id="nominationLimitInput"
+                  min="0"
+                  placeholder="0 = no limit"
+                  style="max-width: 160px"
+                />
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn-primary" id="btnSaveSettings">
+                Save Settings
+              </button>
+            </div>
+            <p class="save-status hidden" id="settingsSaveStatus">✓ Saved.</p>
+          </div>
+        </section>
+
+        <!-- ── REPORT ── -->
+        <section class="tab-section hidden" id="tab-report">
+          <div class="section-header">
+            <h2 class="section-title">Generate Report</h2>
+          </div>
+          <div class="form-card">
+            <p class="form-desc">
+              Generate the JBC Nomination Report for the active batch. The
+              report lists all applicants who met the vote threshold (or are
+              under Nominate All), grouped by Lower Courts and Appellate Courts.
+            </p>
+            <div class="form-actions">
+              <button class="btn-secondary" id="btnGenerateReportTxt">
+                Download .txt
+              </button>
+              <button class="btn-primary" id="btnGenerateReportDocx">
+                Download .docx
+              </button>
+            </div>
+            <div class="report-preview hidden" id="reportPreview">
+              <pre id="reportText"></pre>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- MOBILE HAMBURGER DRAWER — only shown on mobile via CSS -->
+    <div class="mobile-menu-overlay" id="mobileMenuOverlay">
+      <div class="mobile-menu-drawer">
+        <div class="mobile-menu-header">
+          <div class="mobile-menu-title">Admin Panel</div>
+          <div class="mobile-menu-user" id="drawerAdminName">—</div>
+        </div>
+        <nav class="mobile-menu-nav">
+          <button class="mobile-nav-item active" data-tab="batches">
+            <span class="mobile-nav-icon">📦</span><span>Batches</span>
+          </button>
+          <button class="mobile-nav-item" data-tab="stations">
+            <span class="mobile-nav-icon">🏛</span><span>Stations</span>
+          </button>
+          <button class="mobile-nav-item" data-tab="applicants">
+            <span class="mobile-nav-icon">👤</span><span>Applicants</span>
+          </button>
+          <button class="mobile-nav-item" data-tab="members">
+            <span class="mobile-nav-icon">👥</span><span>Members</span>
+          </button>
+          <button class="mobile-nav-item" data-tab="nominate-all">
+            <span class="mobile-nav-icon">★</span><span>Nominate All</span>
+          </button>
+          <button class="mobile-nav-item" data-tab="locks">
+            <span class="mobile-nav-icon">🔒</span><span>Lock Control</span>
+          </button>
+          <button class="mobile-nav-item" data-tab="settings">
+            <span class="mobile-nav-icon">⚙</span><span>Settings</span>
+          </button>
+          <button class="mobile-nav-item" data-tab="report">
+            <span class="mobile-nav-icon">📄</span><span>Report</span>
+          </button>
+          <div class="mobile-menu-divider"></div>
+          <button class="mobile-nav-logout" id="btnDrawerLogout">
+            <span class="mobile-nav-icon">↩</span><span>Log out</span>
+          </button>
+        </nav>
+      </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast hidden" id="toast">
+      <span class="toast-icon">✓</span>
+      <span id="toastText">Done.</span>
+    </div>
+
+    <!-- CONFIRM DIALOG -->
+    <div class="modal-overlay hidden" id="confirmOverlay">
+      <div class="modal modal-sm">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <span class="modal-eyebrow">Confirm Action</span>
+            <h2 class="modal-name" id="confirmTitle">Are you sure?</h2>
+          </div>
+        </div>
+        <div class="modal-body">
+          <p
+            id="confirmMsg"
+            style="font-size: 15px; color: #4a4843; line-height: 1.6"
+          ></p>
+        </div>
+        <div class="modal-footer modal-footer-row">
+          <button class="btn-modal-cancel" id="btnConfirmCancel">Cancel</button>
+          <button class="btn-danger" id="btnConfirmOk">Confirm</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- EDIT STATION MODAL -->
+    <div class="modal-overlay hidden" id="editStationModal">
+      <div class="modal">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <span class="modal-eyebrow">Station Management</span>
+            <h2 class="modal-name">Edit Station</h2>
+          </div>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="editStationId" />
+          <div class="form-row" style="margin-bottom: 0">
+            <div class="field-group">
+              <label class="field-label">Court Category *</label>
+              <select class="field-input" id="editStationCategory">
+                <option value="Appellate">Appellate</option>
+                <option value="Lower Court">Lower Court</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label">Court Type *</label>
+              <select class="field-input" id="editStationType"></select>
+            </div>
+            <div class="field-group field-group--full">
+              <label class="field-label">Court Station Name *</label>
+              <input class="field-input" type="text" id="editStationName" />
+            </div>
+            <div class="field-group field-group--full">
+              <label class="field-label"
+                >Region
+                <span class="field-hint">(blank for Appellate)</span></label
+              >
+              <select class="field-input" id="editStationRegion">
+                <option value="">(Appellate — leave blank)</option>
+                <option>NCR</option>
+                <option>CAR</option>
+                <option>Region 1</option>
+                <option>Region 2</option>
+                <option>Region 3</option>
+                <option>Region 4</option>
+                <option>Region 5</option>
+                <option>Region 6</option>
+                <option>Region 7</option>
+                <option>Region 8</option>
+                <option>Region 9</option>
+                <option>Region 10</option>
+                <option>Region 11</option>
+                <option>Region 12</option>
+                <option>BARMM</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer modal-footer-row">
+          <button class="btn-modal-cancel" id="btnCancelEditStation">
+            Cancel
+          </button>
+          <button class="btn-primary" id="btnSaveEditStation">
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- docx.js + FileSaver — exactly as used in the official browser example -->
+    <script src="https://unpkg.com/docx@7.1.0/build/index.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.js"></script>
+    <script src="api.js"></script>
+    <script src="admin.js"></script>
+
+    <!-- PWA SERVICE WORKER -->
+    <script>
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./service-worker.js')
+              .then(() => console.log('JBC: Service worker registered.'))
+              .catch(err => console.log('JBC: Service worker error:', err));
+          });
+        }
+      </script>
+    <!-- ------------------- -->
+
+  </body>
+</html>

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- FOR PWA  -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#075620">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="JBC Voting">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <!-- -------- -->
+
+
+  <title>JBC — Nominees</title>
+  <link rel="stylesheet" href="nominees.css" />
+
+     
+
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="header-left">
+        <button class="btn-back" id="btnBack" aria-label="Back to stations">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </button>
+        <div class="logo-wrap">
+          <img src="JBC_Logo.png" alt="JBC Logo">
+        </div>
+        <div class="header-text">
+          <span class="header-title" id="headerStation">Loading…</span>
+          <span class="header-batch" id="headerBatch">—</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <span class="member-name" id="memberName">—</span>
+        <button class="btn-logout" id="btnLogout">Log out</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- Station info bar -->
+    <div class="station-bar" id="stationBar">
+      <div class="station-bar-inner">
+        <div class="station-meta" id="stationMeta"></div>
+        <div class="station-badges" id="stationBadges"></div>
+      </div>
+    </div>
+
+    <!-- Nominate All banner (shown when nominate_all is active) -->
+    <div class="nominate-all-banner hidden" id="nominateAllBanner">
+      <div class="nab-icon">★</div>
+      <div class="nab-text">
+        <strong>Nominate All is active</strong>
+        <span id="nabDesc">All applicants of the specified classification are automatically nominated.</span>
+      </div>
+    </div>
+
+    <!-- Suggest Nominate All (member action) -->
+    <div class="suggest-bar hidden" id="suggestBar">
+      <span class="suggest-label">Suggest Nominate All for this station?</span>
+      <div class="suggest-btns">
+        <button class="btn-suggest" data-cls="1st Preference" id="btnSuggest1st">1st Preference</button>
+        <button class="btn-suggest" data-cls="ALL"            id="btnSuggestAll">All Applicants</button>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="state-box" id="stateLoading">
+      <div class="spinner"></div>
+      <span>Loading applicants…</span>
+    </div>
+
+    <!-- Error -->
+    <div class="state-box hidden" id="stateError">
+      <div class="state-icon">⚠</div>
+      <p id="stateErrorText">Failed to load applicants.</p>
+      <button class="btn-retry" id="btnRetry">Try again</button>
+    </div>
+
+    <!-- Empty -->
+    <div class="state-box hidden" id="stateEmpty">
+      <div class="state-icon">📋</div>
+      <p>No applicants found for this station.</p>
+    </div>
+
+    <!-- Applicants list + submit -->
+    <div class="nominees-wrap hidden" id="nomineesWrap">
+
+      <!-- Selection summary bar -->
+      <div class="selection-bar" id="selectionBar">
+        <span class="sel-count" id="selCount">0 selected</span>
+        <button class="btn-submit" id="btnSubmit" disabled>Save Nominations</button>
+      </div>
+
+      <!-- Applicant cards -->
+      <div class="applicant-list" id="applicantList"></div>
+
+    </div>
+
+  </main>
+
+  <!-- ── CREDENTIALS MODAL ───────────────────────────── -->
+  <div class="modal-overlay hidden" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalName">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-eyebrow">Applicant Profile</span>
+          <h2 class="modal-name" id="modalName">—</h2>
+        </div>
+        <button class="modal-close" id="modalClose" aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" id="modalBody">
+        <!-- Filled by JS -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn-modal-close" id="btnModalClose">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── LIMIT WARNING MODAL ────────────────────────── -->
+  <div class="modal-overlay hidden" id="limitOverlay" role="dialog" aria-modal="true">
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-eyebrow warn">Nomination Limit Reached</span>
+          <h2 class="modal-name" id="limitApplicantName">—</h2>
+        </div>
+        <button class="modal-close" id="limitClose" aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="limit-warning-body">
+          <div class="limit-icon">⚠</div>
+          <p id="limitWarningText">This applicant has reached the nomination limit across all stations.</p>
+          <p class="limit-note">You may still nominate this applicant if you believe it is warranted.</p>
+        </div>
+      </div>
+      <div class="modal-footer modal-footer-row">
+        <button class="btn-modal-cancel" id="btnLimitCancel">Cancel</button>
+        <button class="btn-modal-proceed" id="btnLimitProceed">Nominate Anyway</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SUBMIT SUCCESS TOAST ───────────────────────── -->
+  <div class="toast hidden" id="toast">
+    <span class="toast-icon">✓</span>
+    <span id="toastText">Nominations saved.</span>
+  </div>
+
+  <script src="api.js"></script>
+  <script src="nominees.js"></script>
+
+  <!-- PWA SERVICE WORKER -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+          .then(() => console.log('JBC: Service worker registered.'))
+          .catch(err => console.log('JBC: Service worker error:', err));
+      });
+    }
+  </script>
+  <!-- ------------------- -->
+</body>
+</html>
