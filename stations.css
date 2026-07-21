@@ -101,10 +101,15 @@ body {
 .main { max-width: 1000px; margin: 0 auto; padding: 36px 20px 72px; }
 
 .page-intro { margin-bottom: 28px; }
+
 .page-intro-top {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  gap: 16px; flex-wrap: wrap;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
 }
+
 .page-title {
   font-family: var(--font-display);
   font-size: 28px; font-weight: 700;
@@ -112,22 +117,34 @@ body {
 }
 .page-desc { font-size: 16px; color: var(--grey-700); font-weight: 300; font-style: italic; }
 
+/* My Votes link */
 .link-myvotes {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-family: var(--font-body); font-size: 14px; font-weight: 600;
-  color: var(--jbc-green); text-decoration: none;
-  background: var(--white); border: 1.5px solid var(--jbc-green);
-  border-radius: 8px; padding: 9px 16px;
-  white-space: nowrap; flex-shrink: 0;
-  box-shadow: var(--shadow-sm);
-  transition: all 0.18s var(--ease-out);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--jbc-green);
+  background: var(--white);
+  border: 1.5px solid var(--jbc-green);
+  border-radius: 8px;
+  padding: 8px 16px;
+  text-decoration: none;
+  transition: all 0.18s;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .link-myvotes:hover {
-  background: var(--jbc-green); color: var(--white);
-  transform: translateY(-1px); box-shadow: var(--shadow-md);
+  background: var(--jbc-green);
+  color: var(--white);
 }
-.link-myvotes-arrow { transition: transform 0.18s var(--ease-out); }
-.link-myvotes:hover .link-myvotes-arrow { transform: translateX(3px); }
+.link-myvotes-arrow {
+  transition: transform 0.18s;
+}
+.link-myvotes:hover .link-myvotes-arrow {
+  transform: translateX(3px);
+}
 
 /* ── Filter bar ── */
 .filter-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 32px; }
@@ -297,6 +314,4 @@ body {
   .page-title   { font-size: 22px; }
   .station-grid { grid-template-columns: 1fr; }
   .filter-btn   { font-size: 12px; padding: 6px 14px; }
-  .page-intro-top { flex-direction: column; align-items: stretch; }
-  .link-myvotes    { justify-content: center; }
 }

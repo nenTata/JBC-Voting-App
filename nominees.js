@@ -390,7 +390,7 @@ function openCredModal(a) {
   };
   const clsCss = clsMap[a.classification] || "pref2";
 
-  const hasCredentials = hasValue(a.bar_exam_grade)
+  const hasCredentials = hasValue(a.pre_judicature_rating)
     || hasValue(a.cases)
     || hasValue(a.teaching_experience)
     || hasValue(a.other_credentials);
@@ -408,11 +408,11 @@ function openCredModal(a) {
     html += `<div class="cred-section">`;
 
     // ── FIX: use hasValue() instead of bare truthiness check ──
-    if (hasValue(a.bar_exam_grade)) {
+    if (hasValue(a.pre_judicature_rating)) {
       html += `
         <div class="cred-row">
-          <span class="cred-label">Bar Exam Grade</span>
-          <span class="cred-value">${esc(String(a.bar_exam_grade))}</span>
+          <span class="cred-label">Pre-Judicature Rating</span>
+          <span class="cred-value">${esc(String(a.pre_judicature_rating))}</span>
         </div>`;
     }
     if (hasValue(a.cases)) {
@@ -492,7 +492,7 @@ async function handleSuggestNominateAll(classification) {
 let toastTimer = null;
 function showToast(msg, isError = false) {
   toastText.textContent = msg;
-  toast.style.borderLeftColor = isError ? "#9b2222" : "var(--gold)";
+  toast.style.borderLeftColor = isError ? "#9b2222" : "var(--jbc-green)";
   toast.classList.remove("hidden");
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toast.classList.add("hidden"), 4000);
