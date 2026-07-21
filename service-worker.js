@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'jbc-v1';
+const CACHE_NAME = 'jbc-v2';
 
 // Files to be saved on the phone. Add page or file here in the future if any
 const FILES_TO_CACHE = [
