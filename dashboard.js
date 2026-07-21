@@ -35,9 +35,36 @@ const sumTotal     = document.getElementById("sumTotal");
 const sumLocked    = document.getElementById("sumLocked");
 const sumOpen      = document.getElementById("sumOpen");
 const sumNomAll    = document.getElementById("sumNomAll");
+const btnTheme     = document.getElementById("btnTheme");
+const themeIcon    = document.getElementById("themeIcon");
+const themeLabel   = document.getElementById("themeLabel");
+
+// ── Theme toggle ──────────────────────────────────────────────
+let isLight = false;
+
+function initTheme() {
+  // Restore last used theme from localStorage
+  isLight = localStorage.getItem("jbc-dash-theme") === "light";
+  applyTheme();
+}
+
+function applyTheme() {
+  document.body.classList.toggle("light", isLight);
+  themeIcon.textContent  = isLight ? "🌙" : "☀️";
+  themeLabel.textContent = isLight ? "Dark Mode" : "Light Mode";
+}
+
+function toggleTheme() {
+  isLight = !isLight;
+  localStorage.setItem("jbc-dash-theme", isLight ? "light" : "dark");
+  applyTheme();
+}
 
 // ── Init ──────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
+  initTheme();
+  btnTheme.addEventListener("click", toggleTheme);
+
   // Dashboard is a public read-only page — no login check
   // But it needs the active batch from session OR from the backend
   activeBatch = getSessionBatch();

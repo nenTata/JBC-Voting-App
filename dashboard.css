@@ -70,7 +70,7 @@ body { font-family:var(--font-body); background:var(--bg); color:var(--white); m
 .last-updated { font-size:11px; color:rgba(255,255,255,0.45); font-style:italic; }
 
 /* ── Main ── */
-.main { font-size: 15px; padding:24px 24px 60px; max-width:1400px; margin:0 auto; }
+.main { padding:24px 24px 60px; max-width:1400px; margin:0 auto; }
 
 /* ── State boxes ── */
 .state-box { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:80px 24px; text-align:center; color:rgba(255,255,255,0.5); font-size:16px; font-style:italic; }
@@ -83,7 +83,7 @@ body { font-family:var(--font-body); background:var(--bg); color:var(--white); m
 .summary-bar { display:flex; gap:12px; margin-bottom:28px; flex-wrap:wrap; }
 .summary-bar.hidden { display:none; }
 .sum-chip { flex:1; min-width:100px; background:var(--bg-card); border:1px solid rgba(255,255,255,0.08); border-radius:var(--radius); padding:14px 18px; display:flex; flex-direction:column; gap:2px; }
-.sum-num { font-family:var(--font-display); font-size:28px; font-weight:700; color:var(--white); line-height:1; }
+.sum-num { font-family:var(--font-display); font-size:28px; font-weight:700; color:var(--jbc-bright); line-height:1; }
 .sum-lbl { font-size:12px; color:rgba(255,255,255,0.55); font-style:italic; }
 
 /* ── Dashboard out ── */
@@ -164,3 +164,130 @@ body { font-family:var(--font-body); background:var(--bg); color:var(--white); m
   .station-grid { grid-template-columns:1fr; }
   .sum-num { font-size:22px; }
 }
+
+/* ── Theme toggle button ── */
+.btn-theme {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--white);
+  background: rgba(255,255,255,0.12);
+  border: 1.5px solid rgba(255,255,255,0.3);
+  border-radius: 6px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.btn-theme:hover {
+  background: rgba(255,255,255,0.22);
+  border-color: rgba(255,255,255,0.5);
+}
+.btn-theme-icon { font-size: 14px; }
+
+/* ════════════════════════════════════════════════
+   LIGHT MODE — applied when body has class "light"
+   ════════════════════════════════════════════════ */
+body.light {
+  background: #f5f7f5;
+  color: #111;
+}
+
+/* Header stays JBC green in both modes */
+body.light .header {
+  background: var(--jbc-green);
+  border-bottom-color: var(--sc-lightPurple);
+}
+
+/* Toggle button adjusts in light mode */
+body.light .btn-theme {
+  color: var(--white);
+  background: rgba(255,255,255,0.15);
+  border-color: rgba(255,255,255,0.35);
+}
+body.light .btn-theme:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+/* Summary chips */
+body.light .sum-chip {
+  background: var(--white);
+  border: 1.5px solid #d0d8d0;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+body.light .sum-num  { color: var(--jbc-green); }
+body.light .sum-lbl  { color: #666; }
+
+/* Group labels */
+body.light .group-label { color: var(--jbc-mid); }
+body.light .group-rule  { background: linear-gradient(to right, #bbb, transparent); }
+body.light .group-count {
+  color: #555;
+  background: #eee;
+  border-color: #ddd;
+}
+body.light .region-label { color: #888; }
+
+/* State box */
+body.light .state-box { color: #888; }
+body.light .spinner   { border-color: #ddd; border-top-color: var(--jbc-green); }
+
+/* Station cards */
+body.light .station-card {
+  background: var(--white);
+  border: 1.5px solid #d0d8d0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+body.light .station-card.locked     { border-color: #e05555; opacity: 0.85; }
+body.light .station-card.nominate-all { border-color: var(--sc-lightPurple); }
+
+/* Card header */
+body.light .sc-header {
+  background: #f0f4f0;
+  border-bottom-color: #d0d8d0;
+}
+body.light .sc-title { color: #111; }
+
+/* Badges — keep colors, just make background more visible */
+body.light .badge.open         { background: #dcf5e8; }
+body.light .badge.locked       { background: #fde8e8; }
+body.light .badge.nominate-all { background: #ecdff5; }
+body.light .badge.threshold    { background: #dceeff; }
+
+/* Members row */
+body.light .sc-members {
+  background: #f5f5f5;
+  border-bottom-color: #ddd;
+}
+body.light .sc-member-label { color: #888; }
+body.light .member-dot.pending { background: #ccc; }
+
+/* Tally rows */
+body.light .tally-name  { color: #222; }
+body.light .tally-count { color: #111; }
+body.light .tally-check { color: var(--jbc-green); }
+body.light .tally-bar-bg { background: #ddd; }
+body.light .tally-bar-fill     { background: var(--sc-lightPurple); }
+body.light .tally-bar-fill.met { background: var(--jbc-green); }
+body.light .tally-row.threshold-met { background: rgba(7,86,32,0.06); }
+body.light .tally-row.threshold-met .tally-name { color: var(--jbc-green); }
+body.light .threshold-line { color: #aaa; }
+body.light .threshold-line::before { background: #ddd; }
+
+/* Nominate All */
+body.light .nom-all-item  { border-bottom-color: #eee; }
+body.light .nom-all-name  { color: #111; }
+body.light .nom-all-cls.pref1 { background: #dcf5e8; }
+body.light .nom-all-cls.pref2 { background: #ecdff5; }
+body.light .nom-all-cls.least { background: #fef3dc; }
+
+/* Pending */
+body.light .sc-pending { color: #888; border-top-color: #eee; }
+
+/* Refresh status */
+body.light .refresh-status { color: rgba(255,255,255,0.85); }
+body.light .last-updated   { color: rgba(255,255,255,0.6); }
