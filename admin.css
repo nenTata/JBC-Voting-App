@@ -88,7 +88,7 @@ body {
   width: 36px;
   height: 36px;
   flex-shrink: 0;
-  margin: 0;            /* remove the old margin: 0 auto 16px */
+  margin: 0;
 }
 
 .logo-wrap img {

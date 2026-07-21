@@ -1,25 +1,25 @@
-// ============================================================
-// JBC VOTING SYSTEM — stations.js  (Phase 4: Station Selector)
-// ============================================================
-// Depends on: api.js (callAPI, requireLogin, getSessionMember,
-//                     getSessionBatch, logout)
-// On card click: saves station to sessionStorage
-//               → navigates to nominees.html
-// ============================================================
-
-// ── Region order for Lower Courts ───────────────────────────
+// -- Judicial Regions -- //
 const REGION_ORDER = [
-  "NCR", "CAR",
-  "Region 1","Region 2","Region 3","Region 4","Region 5",
-  "Region 6","Region 7","Region 8","Region 9","Region 10",
-  "Region 11","Region 12","BARMM"
+  "NCJR",
+  "Region 1",
+  "Region 2",
+  "Region 3",
+  "Region 4",
+  "Region 5",
+  "Region 6",
+  "Region 7",
+  "Region 8",
+  "Region 9",
+  "Region 10",
+  "Region 11",
+  "Region 12"
 ];
 
-// ── State ────────────────────────────────────────────────────
+// -- State -- //
 let allStations  = [];
 let activeFilter = "all";
 
-// ── DOM refs ─────────────────────────────────────────────────
+// -- DOM refs -- //
 const memberNameEl  = document.getElementById("memberName");
 const batchLabelEl  = document.getElementById("batchLabel");
 const btnLogout     = document.getElementById("btnLogout");
@@ -32,14 +32,14 @@ const stationsOut   = document.getElementById("stationsOut");
 const btnRetry      = document.getElementById("btnRetry");
 const filterBar     = document.getElementById("filterBar");
 
-// ── Init ─────────────────────────────────────────────────────
+// -- Init -- //
 document.addEventListener("DOMContentLoaded", () => {
   requireLogin();   // redirects to index.html if no session
 
   const member = getSessionMember();
   const batch  = getSessionBatch();
 
-  memberNameEl.textContent = member?.name    || "Member";
+  memberNameEl.textContent = member?.name || "Member";
   batchLabelEl.textContent = batch?.batch_name || "No active batch";
 
   if (!batch) {
@@ -62,7 +62,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadStations();
 });
 
-// ── Fetch stations from backend ───────────────────────────────
+// -- Fetch stations from backend -- //
 async function loadStations() {
   const batch = getSessionBatch();
   showState("loading");
@@ -156,7 +156,7 @@ function renderStations() {
   }
 }
 
-// ── Build DOM: group wrapper ──────────────────────────────────
+// ── Build DOM: group wrapper -- //
 function makeGroup(label, count) {
   const g   = document.createElement("div");
   g.className = "group";
@@ -171,14 +171,14 @@ function makeGroup(label, count) {
   return g;
 }
 
-// ── Build DOM: station grid ───────────────────────────────────
+// ── Build DOM: station grid -- //
 function makeGrid() {
   const g = document.createElement("div");
   g.className = "station-grid";
   return g;
 }
 
-// ── Build DOM: station card ───────────────────────────────────
+// ── Build DOM: station card -- //
 function makeCard(station) {
   const card = document.createElement("div");
   card.className = "station-card" + (station.is_locked ? " locked" : "");
@@ -226,7 +226,7 @@ function makeCard(station) {
   return card;
 }
 
-// ── Navigate to nominees page ─────────────────────────────────
+// ── Navigate to nominees page -- //
 function goToNominees(station) {
   // Store full station context for nominees.js to read on load
   sessionStorage.setItem("selected_station", JSON.stringify({
@@ -246,7 +246,7 @@ function goToNominees(station) {
   window.location.href = "nominees.html";
 }
 
-// ── Show / hide UI states ────────────────────────────────────
+// ── Show / hide UI states -- //
 function showState(state, msg) {
   stateLoading.classList.toggle("hidden", state !== "loading");
   stateError.classList.toggle("hidden",   state !== "error");
@@ -257,7 +257,7 @@ function showState(state, msg) {
   if (state === "error" && msg) stateErrorText.textContent = msg;
 }
 
-// ── Escape HTML ───────────────────────────────────────────────
+// ── Escape HTML -- //
 function esc(str) {
   return String(str ?? "")
     .replace(/&/g,"&amp;").replace(/</g,"&lt;")

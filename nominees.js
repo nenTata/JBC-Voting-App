@@ -14,6 +14,7 @@ let member               = null;
 let batch                = null;
 let applicants           = [];
 let selected             = [];      // applicant_ids in selection order
+let originalSelected     = [];      // applicant_ids that were already saved on the server (as of last load/save)
 let nominationCounts     = {};      // applicant_id → count
 let nominationLimit      = 0;
 let pendingLimitApplicant= null;
@@ -125,6 +126,9 @@ async function loadPage() {
       const sorted = [...votesRes.votes].sort((a, b) => Number(a.nominee_rank) - Number(b.nominee_rank));
       selected = sorted.map(v => v.applicant_id);
     }
+    // Snapshot what's actually saved server-side, so we can later diff
+    // against it to know which applicants were deselected.
+    originalSelected = [...selected];
 
     showState("nominees");
     renderNomineesWrap();
@@ -301,19 +305,39 @@ function updateSelectionBar() {
   selCount.innerHTML = n === 0
     ? "No nominees selected"
     : `<strong>${n}</strong> nominee${n !== 1 ? "s" : ""} selected`;
-  btnSubmit.disabled = n === 0 || station.is_locked;
+  // Enable Save whenever the current selection differs from what's saved —
+  // including clearing down to zero — not just when something is checked.
+  const hasChanges = JSON.stringify([...selected].sort()) !== JSON.stringify([...originalSelected].sort());
+  btnSubmit.disabled = station.is_locked || (n === 0 && !hasChanges);
 }
 
 // ── Submit votes ──────────────────────────────────────────────
 async function handleSubmit() {
-  if (selected.length === 0 || station.is_locked) return;
+  const hasChanges = JSON.stringify([...selected].sort()) !== JSON.stringify([...originalSelected].sort());
+  if ((selected.length === 0 && !hasChanges) || station.is_locked) return;
 
   btnSubmit.textContent = "Saving…";
   btnSubmit.classList.add("saving");
   btnSubmit.disabled = true;
 
+  // Figure out who got unchecked since the last save/load, so their
+  // old vote rows get invalidated on the backend — otherwise the
+  // server just accumulates votes and never clears deselected ones.
+  const deselected = originalSelected.filter(id => !selected.includes(id));
+
   try {
-    const results = await Promise.all(
+    const removeResults = await Promise.all(
+      deselected.map(applicant_id =>
+        callAPI("removeVote", {
+          batch_id:   batch.batch_id,
+          member_id:  member.member_id,
+          station_id: station.station_id,
+          applicant_id
+        })
+      )
+    );
+
+    const submitResults = await Promise.all(
       selected.map((applicant_id, idx) =>
         callAPI("submitVote", {
           batch_id:     batch.batch_id,
@@ -325,13 +349,14 @@ async function handleSubmit() {
       )
     );
 
-    const allOk = results.every(r => r.status === "ok");
+    const allOk = [...removeResults, ...submitResults].every(r => r.status === "ok");
     if (allOk) {
       showToast("Nominations saved successfully.");
+      originalSelected = [...selected]; // sync snapshot to what's now saved
       if (nominationLimit > 0) await loadNominationCounts();
       refreshCards();
     } else {
-      const failed = results.find(r => r.status !== "ok");
+      const failed = [...removeResults, ...submitResults].find(r => r.status !== "ok");
       showToast("Some nominations could not be saved: " + (failed?.message || "Unknown error"), true);
     }
   } catch (err) {
@@ -340,7 +365,7 @@ async function handleSubmit() {
   } finally {
     btnSubmit.textContent = "Save Nominations";
     btnSubmit.classList.remove("saving");
-    btnSubmit.disabled = selected.length === 0;
+    updateSelectionBar();
   }
 }
 

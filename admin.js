@@ -1,12 +1,5 @@
-// ============================================================
-// JBC VOTING SYSTEM — admin.js  (Phase 7: Admin Panel)
-// ============================================================
-// Depends on: api.js
-// Tabs: Batches, Stations, Applicants, Members,
-//       Nominate All, Lock Control, Settings, Report
-// ============================================================
 
-// ── State ────────────────────────────────────────────────────
+// ── State ───── //
 let adminMember     = null;
 let activeBatch     = null;
 let allBatches      = [];
@@ -17,7 +10,7 @@ let allMembers      = [];
 let _confirmCb      = null;
 
 
-// Station sub-tab + pagination + staging
+// Station sub-tab + pagination + staging ───── //
 let currentSubtab      = "masterlist";
 let stationPage        = 0;
 const STATIONS_PER_PAGE = 50;
@@ -25,7 +18,7 @@ let stagedAssignments  = [];
 let stagedBatchId      = "";
 let stagedBatchName    = "";
 
-// ── DOM refs ─────────────────────────────────────────────────
+// ── DOM references ───── //
 const headerBatch      = document.getElementById("headerBatch");
 const adminNameEl      = document.getElementById("adminName");
 const btnLogout        = document.getElementById("btnLogout");
@@ -37,7 +30,7 @@ const confirmMsg       = document.getElementById("confirmMsg");
 const btnConfirmCancel = document.getElementById("btnConfirmCancel");
 const btnConfirmOk     = document.getElementById("btnConfirmOk");
 
-// ── Init ─────────────────────────────────────────────────────
+// ── Initialization ───── //
 document.addEventListener("DOMContentLoaded", () => {
   requireAdmin();
 
@@ -54,7 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
     btn.addEventListener("click", () => switchTab(btn.dataset.tab));
   });
 
-  // Mobile hamburger drawer
+  // Mobile hamburger menu
   const btnHamburger      = document.getElementById("btnHamburger");
   const mobileMenuOverlay = document.getElementById("mobileMenuOverlay");
   const drawerAdminName   = document.getElementById("drawerAdminName");
@@ -115,7 +108,7 @@ document.addEventListener("DOMContentLoaded", () => {
   switchTab("batches");
 });
 
-// ── Tab switching ─────────────────────────────────────────────
+// ── Tab switching ───── //
 function switchTab(tab) {
   // Show/hide content sections
   document.querySelectorAll(".tab-section").forEach(s => s.classList.add("hidden"));
@@ -311,7 +304,16 @@ async function saveBatch() {
 
 async function activateBatch(batch_id) {
   const res = await callAPI("activateBatch", { batch_id });
-  if (res.status === "ok") { showToast("Batch activated."); loadBatches(); }
+  if (res.status === "ok") { 
+    const found = allBatches.find(b => b.batch_id === batch_id);
+    if (found) {
+      activeBatch = found;
+      setSessionBatch(found);
+      headerBatch.textContent = found.batch_name;   
+    }
+    showToast("Batch activated.");
+    loadBatches(); 
+  }
   else showToast(res.message || "Failed.", true);
 }
 
@@ -402,7 +404,7 @@ async function loadStations() {
   }
 }
 
-// ── Master Station List ───────────────────────────────────────
+// ── Master Station List ───── //
 function renderMasterStations() {
   const list  = document.getElementById("masterStationList");
   const start = stationPage * STATIONS_PER_PAGE;
@@ -443,7 +445,7 @@ function renderMasterStations() {
   });
 }
 
-// ── Edit Station Modal ────────────────────────────────────────
+// ── Edit Station Modal ───── //
 function openEditStationModal(s) {
   document.getElementById("editStationId").value       = s.station_id;
   document.getElementById("editStationCategory").value = s.court_category;
@@ -475,7 +477,7 @@ async function saveEditStation() {
   } else showToast(res.message || "Failed.", true);
 }
 
-// ── Delete Station ────────────────────────────────────────────
+// ── Delete Station ───── //
 async function handleDeleteStation(s) {
   const res = await callAPI("deleteStation", { station_id: s.station_id });
   if (res.status === "ok") {
@@ -492,7 +494,7 @@ async function handleDeleteStation(s) {
   }
 }
 
-// ── Court Type Dropdown ───────────────────────────────────────
+// ── Court Type Dropdown ───── //
 function updateCourtTypeOptions(selectId, category) {
   const sel      = document.getElementById(selectId);
   const current  = sel.value;
@@ -502,7 +504,7 @@ function updateCourtTypeOptions(selectId, category) {
   sel.innerHTML   = options.map(t => `<option value="${t}"${t === current ? " selected" : ""}>${t}</option>`).join("");
 }
 
-// ── Batch Dropdown ────────────────────────────────────────────
+// ── Batch Dropdown ───── //
 function populateBatchDropdown(selectId) {
   const sel     = document.getElementById(selectId);
   const current = sel.value;
@@ -532,7 +534,7 @@ async function saveStation() {
   } else showToast(res.message || "Failed.", true);
 }
 
-// ── Assign to Batch ───────────────────────────────────────────
+// ── Assign to Batch ───── //
 async function onAssignBatchChange() {
   const sel       = document.getElementById("assignBatchSelect");
   stagedBatchId   = sel.value;
@@ -646,7 +648,7 @@ async function confirmAssignments() {
   }
 }
 
-// ── Batch Station Summary ─────────────────────────────────────
+// ── Batch Station Summary ───── //
 async function loadBatchSummary() {
   const batch_id = document.getElementById("summaryBatchSelect").value;
   const list     = document.getElementById("batchSummaryList");
@@ -1088,7 +1090,7 @@ async function fetchReportData(btn, label) {
   }
 }
 
-// ── .txt download (unchanged behaviour) ──────────────────────
+// ── .txt download (unchanged behaviour) ───── //
 async function generateReportTxt() {
   const btn = document.getElementById("btnGenerateReportTxt");
   const res = await fetchReportData(btn, "Download .txt");
@@ -1107,7 +1109,7 @@ async function generateReportTxt() {
   showToast("Text report downloaded.");
 }
 
-// ── .docx download ────────────────────────────────────────────
+// ── .docx download ───── //
 async function generateReportDocx() {
   const btn = document.getElementById("btnGenerateReportDocx");
 
@@ -1141,7 +1143,7 @@ async function generateReportDocx() {
   }
 }
 
-// ── Build the .docx from report_text ─────────────────────────
+// ── Build the .docx from report_text ───── //
 async function buildDocx(reportText, batchName) {
   // docx.js v7 UMD exposes everything on the global `docx` object
   const {
@@ -1165,7 +1167,7 @@ async function buildDocx(reportText, batchName) {
     });
   }
 
-  // ── Document header ──────────────────────────────────────────
+  // ── Document header ───── //
   children.push(new Paragraph({
     alignment: AlignmentType.CENTER,
     spacing: { before: 0, after: 40 },
@@ -1198,7 +1200,7 @@ async function buildDocx(reportText, batchName) {
   }
   children.push(hRule(COLOR_GREEN));
 
-  // ── Parse body ───────────────────────────────────────────────
+  // ── Parse body ───── //
   let inBody = false;
   for (const raw of lines) {
     // Skip meta lines already rendered in header
@@ -1255,7 +1257,7 @@ async function buildDocx(reportText, batchName) {
     }
   }
 
-  // ── Footer ───────────────────────────────────────────────────
+  // ── Footer ───── //
   children.push(new Paragraph({ spacing: { before: 400, after: 0 } }));
   children.push(hRule("CCCCCC"));
   children.push(new Paragraph({
@@ -1264,7 +1266,7 @@ async function buildDocx(reportText, batchName) {
     children: [new TextRun({ text: "— End of Report —", font: FONT, size: 18, color: COLOR_GREY, italics: true })]
   }));
 
-  // ── Assemble ─────────────────────────────────────────────────
+  // ── Assemble ───── //
   const doc = new Document({
     sections: [{
       properties: {

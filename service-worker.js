@@ -1,20 +1,7 @@
 
-// ============================================================
-// JBC VOTING SYSTEM — service-worker.js
-// ============================================================
-// Think of this like a helper that stores a copy of the app
-// on the phone so it loads fast even on slow internet.
-//
-// HOW TO UPDATE:
-// Whenever you make big changes to your app files,
-// change 'jbc-v1' below to 'jbc-v2', then 'jbc-v3', etc.
-// This tells all phones to download the fresh new version.
-// ============================================================
-
 const CACHE_NAME = 'jbc-v1';
 
-// These are all the files we want to save on the phone.
-// If you add a new page or file in the future, add it here.
+// Files to be saved on the phone. Add page or file here in the future if any
 const FILES_TO_CACHE = [
   './',
   './index.html',
@@ -42,7 +29,7 @@ const FILES_TO_CACHE = [
   './icons/icon-512.png'
 ];
 
-// ── INSTALL ──────────────────────────────────────────────────
+// ── INSTALL -- //
 // This runs once when the app is first installed on the phone.
 // It downloads and saves all the files listed above.
 self.addEventListener('install', event => {
@@ -55,7 +42,7 @@ self.addEventListener('install', event => {
   self.skipWaiting();
 });
 
-// ── ACTIVATE ─────────────────────────────────────────────────
+// ── ACTIVATE -- //
 // This runs after install. It deletes any OLD saved versions
 // so the phone always uses the latest one.
 self.addEventListener('activate', event => {
@@ -72,7 +59,7 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// ── FETCH ────────────────────────────────────────────────────
+// ── FETCH -- //
 // Every time the app tries to load something (a page, a CSS
 // file, an image), this decides where to get it from.
 //
