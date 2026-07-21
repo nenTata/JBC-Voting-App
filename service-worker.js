@@ -1,7 +1,15 @@
+// ============================================================
+// JBC VOTING SYSTEM — service-worker.js
+// ============================================================
+// UPDATE INSTRUCTIONS:
+// Every time you change any app file, bump the version number
+// below. Example: 'jbc-v2' → 'jbc-v3' → 'jbc-v4'
+// This forces all phones to throw away old cache and
+// download everything fresh on next open.
+// ============================================================
 
-const CACHE_NAME = 'jbc-v2';
+const CACHE_NAME = 'jbc-v2'; // ← bump this every update
 
-// Files to be saved on the phone. Add page or file here in the future if any
 const FILES_TO_CACHE = [
   './',
   './index.html',
@@ -29,66 +37,81 @@ const FILES_TO_CACHE = [
   './icons/icon-512.png'
 ];
 
-// ── INSTALL -- //
-// This runs once when the app is first installed on the phone.
-// It downloads and saves all the files listed above.
+// ── INSTALL ──────────────────────────────────────────────────
+// Download and cache all files. skipWaiting forces the new
+// service worker to activate immediately without waiting for
+// old tabs to close.
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(FILES_TO_CACHE);
-    })
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(FILES_TO_CACHE))
+      .then(() => self.skipWaiting()) // activate immediately
   );
-  // Take over immediately without waiting
-  self.skipWaiting();
 });
 
-// ── ACTIVATE -- //
-// This runs after install. It deletes any OLD saved versions
-// so the phone always uses the latest one.
+// ── ACTIVATE ─────────────────────────────────────────────────
+// Delete ALL old caches, then take control of every open tab
+// immediately so the new version is used right away.
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
+    caches.keys()
+      .then(cacheNames => Promise.all(
         cacheNames
           .filter(name => name !== CACHE_NAME)
-          .map(name => caches.delete(name))
-      );
-    })
+          .map(name => {
+            console.log('JBC SW: Deleting old cache:', name);
+            return caches.delete(name);
+          })
+      ))
+      .then(() => {
+        console.log('JBC SW: Now active, claiming all clients.');
+        return self.clients.claim(); // take over all open tabs now
+      })
   );
-  // Take control of all open tabs immediately
-  self.clients.claim();
 });
 
-// ── FETCH -- //
-// Every time the app tries to load something (a page, a CSS
-// file, an image), this decides where to get it from.
-//
-// Strategy: Network first, fall back to cache.
-// → Try to get the fresh version from the internet first.
-// → If no internet, use the saved copy on the phone.
-// → This way members always get the latest version when online,
-//   and can still open the app when offline.
+// ── FETCH ────────────────────────────────────────────────────
+// Strategy: Network first, cache as fallback.
+// Always try to get the latest from the internet.
+// Only use cache if there is no internet connection.
 self.addEventListener('fetch', event => {
-  // Only handle requests from our own app, not Google Sheets API
-  // (API calls always need real internet — can't cache those)
+  // Skip non-GET requests
+  if (event.request.method !== 'GET') return;
+
+  // Skip Google Apps Script API calls — always need real internet
   if (event.request.url.includes('script.google.com') ||
-      event.request.url.includes('googleapis.com')) {
-    return; // Let API calls go straight to the internet
+      event.request.url.includes('googleapis.com') ||
+      event.request.url.includes('fonts.googleapis.com') ||
+      event.request.url.includes('fonts.gstatic.com') ||
+      event.request.url.includes('cdnjs.cloudflare.com') ||
+      event.request.url.includes('unpkg.com')) {
+    return; // pass through directly, don't cache these
   }
 
   event.respondWith(
     fetch(event.request)
       .then(networkResponse => {
-        // Got a fresh response from internet — save a copy and return it
-        const responseClone = networkResponse.clone();
-        caches.open(CACHE_NAME).then(cache => {
-          cache.put(event.request, responseClone);
-        });
+        // Success — update the cache with the fresh response
+        if (networkResponse && networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseClone);
+          });
+        }
         return networkResponse;
       })
       .catch(() => {
-        // No internet — use the saved copy instead
+        // No internet — fall back to cached version
         return caches.match(event.request);
       })
   );
+});
+
+// ── MESSAGE: force update from app ───────────────────────────
+// The app can send a 'SKIP_WAITING' message to force the
+// new service worker to activate immediately.
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
