@@ -3,26 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
-    <!-- FOR PWA  -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#075620">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="JBC Voting">
-    <link rel="apple-touch-icon" href="icons/icon-192.png">
-    <!-- -------- -->
-
-
     <title>JBC — Admin Panel</title>
     <link rel="stylesheet" href="admin.css" />
-
-  
     
-  <!-- FONT AWESOME -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Roboto+Slab:wght@100..900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
-
+    <!-- FONT AWESOME -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Roboto+Slab:wght@100..900&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
     
   </head>
   <body>
@@ -35,12 +20,18 @@
           </div>
           <div class="header-text">
             <span class="header-title">Admin Panel</span>
-            <span class="header-batch" id="headerBatch">—</span>
           </div>
         </div>
         <div class="header-right">
+          <div class="header-active-batch">
+            <span class="header-active-label">Active Batch</span>
+            <span class="header-active-name" id="headerBatch">—</span>
+          </div>
+          <div class="header-divider"></div>
           <a href="dashboard.html" class="btn-dashboard" target="_blank">Live Dashboard ↗</a>
+          <div class="header-divider"></div>
           <span class="admin-name" id="adminName">—</span>
+          <div class="header-divider"></div>
           <button class="btn-logout" id="btnLogout">Log out</button>
           <!-- Hamburger — only visible on mobile via CSS -->
           <button class="btn-hamburger" id="btnHamburger" aria-label="Open menu">
@@ -680,18 +671,5 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.js"></script>
     <script src="api.js"></script>
     <script src="admin.js"></script>
-
-    <!-- PWA SERVICE WORKER -->
-    <script>
-        if ('serviceWorker' in navigator) {
-          window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./service-worker.js')
-              .then(() => console.log('JBC: Service worker registered.'))
-              .catch(err => console.log('JBC: Service worker error:', err));
-          });
-        }
-      </script>
-    <!-- ------------------- -->
-
   </body>
 </html>
