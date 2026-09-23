@@ -5,6 +5,10 @@
 // Auto-refreshes every 8 seconds.
 // No login required — public read-only view.
 // Grouped: Appellate first, then Lower Courts by region.
+//
+// UPDATE: Only applicants with at least 1 nomination are shown
+// (name + vote count). Applicants with 0 votes are hidden so
+// stations with many applicants don't crowd the screen.
 // ============================================================
 
 const REFRESH_INTERVAL_MS = 8000;
@@ -262,33 +266,43 @@ function buildMemberDots(station) {
 }
 
 // ── Tally body (regular voting) ───────────────────────────────
+// Shows ONLY applicants with at least 1 nomination.
 function buildTallyBody(station, nominationLimit) {
-  const applicants  = station.applicants || [];
-  const threshold   = station.vote_threshold || 0;
-  const maxVotes    = Math.max(...applicants.map(a => a.vote_count), 1);
+  const threshold = station.vote_threshold || 0;
 
-  if (applicants.length === 0) {
-    return `<div class="sc-body"><span style="font-size:12px;color:var(--grey-500);font-style:italic">No applicants.</span></div>`;
+  // Keep only nominated applicants; sort by votes (desc), then name (A–Z)
+  const nominated = (station.applicants || [])
+    .filter(a => Number(a.vote_count) > 0)
+    .sort((a, b) =>
+      Number(b.vote_count) - Number(a.vote_count) ||
+      String(a.full_name).localeCompare(String(b.full_name))
+    );
+
+  if (nominated.length === 0) {
+    return `<div class="sc-body"><span style="font-size:12px;color:var(--grey-500);font-style:italic">No nominations yet.</span></div>`;
   }
+
+  const maxVotes = Math.max(...nominated.map(a => Number(a.vote_count)), 1);
 
   let rows = "";
   let thresholdShown = false;
 
-  // Sort by vote count desc (already sorted from backend, but ensure)
-  const sorted = [...applicants].sort((a, b) => b.vote_count - a.vote_count);
+  nominated.forEach(a => {
+    const votes = Number(a.vote_count);
 
-  sorted.forEach((a, idx) => {
     // Insert threshold line between met and not-met
-    if (threshold > 0 && !thresholdShown && a.vote_count < threshold) {
+    if (threshold > 0 && !thresholdShown && votes < threshold) {
       rows += `<div class="threshold-line">threshold: ${threshold} votes</div>`;
       thresholdShown = true;
     }
 
-    const met       = threshold > 0 && a.vote_count >= threshold;
-    const barWidth  = maxVotes > 0 ? Math.round((a.vote_count / maxVotes) * 100) : 0;
+    const met       = threshold > 0 && votes >= threshold;
+    const barWidth  = Math.round((votes / maxVotes) * 100);
     const limitWarn = nominationLimit > 0 && a.limit_exceeded
       ? `<span class="limit-flag">⚠</span>` : "";
-    const checkmark = met ? `<span class="tally-check">✓</span>` : `<span class="tally-check"></span>`;
+    const checkmark = met
+      ? `<span class="tally-check">✓</span>`
+      : `<span class="tally-check"></span>`;
 
     rows += `
       <div class="tally-row ${met ? "threshold-met" : ""}">
@@ -298,14 +312,14 @@ function buildTallyBody(station, nominationLimit) {
             <div class="tally-bar-fill ${met ? "met" : ""}" style="width:${barWidth}%"></div>
           </div>
         </div>
-        <span class="tally-count">${a.vote_count}</span>
+        <span class="tally-count">${votes}</span>
         ${checkmark}
         ${limitWarn}
       </div>
     `;
   });
 
-  // If all applicants met threshold, show line at bottom
+  // If all nominated applicants met threshold, show line at bottom
   if (threshold > 0 && !thresholdShown) {
     rows += `<div class="threshold-line">all above threshold: ${threshold}</div>`;
   }
@@ -314,6 +328,7 @@ function buildTallyBody(station, nominationLimit) {
 }
 
 // ── Nominate All body ─────────────────────────────────────────
+// Compact summary instead of listing every applicant.
 function buildNomAllBody(station) {
   const cls = station.nominate_all_classification || "ALL";
   const applicants = (station.applicants || []).filter(a =>
@@ -324,24 +339,13 @@ function buildNomAllBody(station) {
     return `<div class="sc-nom-all-body"><span style="font-size:12px;color:var(--grey-500);font-style:italic">No applicants in this classification.</span></div>`;
   }
 
-  const clsMap = {
-    "1st Preference":"pref1","2nd Preference":"pref2",
-    "Least Preferred":"least","For Reporting":"report"
-  };
-
-  const items = applicants.map(a => {
-    const clsCss = clsMap[a.classification] || "pref2";
-    return `
-      <div class="nom-all-item">
-        <span class="nom-all-name">${esc(a.full_name)}</span>
-        <span class="nom-all-cls ${clsCss}">${esc(a.classification)}</span>
-      </div>
-    `;
-  }).join("");
+  const label = cls === "ALL" ? "all applicants" : `“${esc(cls)}” applicants`;
 
   return `
     <div class="sc-nom-all-body">
-      <div class="nom-all-list">${items}</div>
+      <div style="font-size:16px;color:var(--sc-pale);text-align:center;padding:8px 0">
+        ★ <strong>${applicants.length}</strong> ${label} automatically nominated
+      </div>
     </div>
   `;
 }

@@ -1,11 +1,7 @@
-// ============================================================
-// JBC VOTING SYSTEM — myvotes.js  (Phase 6: My Votes)
-// ============================================================
-// Shows a summary of all the logged-in member's nominations
-// across every station in the active batch.
-// Member can click Edit on any unlocked station to go back
-// to nominees.html for that station.
-// ============================================================
+// ==============
+// myvotes.js 
+// ==============
+
 
 // ── State ────────────────────────────────────────────────────
 let member     = null;

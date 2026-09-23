@@ -112,11 +112,19 @@ document.addEventListener("DOMContentLoaded", () => {
   initSettings();
   initReport();
 
-  switchTab("batches");
+  // Restore the tab (and Stations sub-tab) the admin was on before refresh
+  const savedTab = sessionStorage.getItem("jbc_admin_tab");
+  const savedSub = sessionStorage.getItem("jbc_admin_subtab");
+
+  if (savedSub && document.getElementById("subtab-" + savedSub)) {
+    switchSubtab(savedSub);
+  }
+  switchTab(savedTab && document.getElementById("tab-" + savedTab) ? savedTab : "batches");
 });
 
 // ── Tab switching ─────────────────────────────────────────────
 function switchTab(tab) {
+  sessionStorage.setItem("jbc_admin_tab", tab);
   // Show/hide content sections
   document.querySelectorAll(".tab-section").forEach(s => s.classList.add("hidden"));
   document.getElementById("tab-" + tab)?.classList.remove("hidden");
@@ -406,6 +414,7 @@ function initStations() {
 
 function switchSubtab(subtab) {
   currentSubtab = subtab;
+  sessionStorage.setItem("jbc_admin_subtab", subtab);
   document.querySelectorAll(".subtab-btn").forEach(b => b.classList.toggle("active", b.dataset.subtab === subtab));
   document.querySelectorAll(".subtab-section").forEach(s => s.classList.toggle("hidden", s.id !== "subtab-" + subtab));
 }
