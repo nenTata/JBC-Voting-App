@@ -142,14 +142,15 @@ async function loadPage() {
 
 // ── Nomination counts ─────────────────────────────────────────
 async function loadNominationCounts() {
-  const results = await Promise.all(
-    applicants.map(a => callAPI("getNominationCount", {
-      batch_id: batch.batch_id, applicant_id: a.applicant_id
-    }))
-  );
-  results.forEach((res, i) => {
-    if (res.status === "ok") nominationCounts[applicants[i].applicant_id] = res.count;
-  });
+  // ONE request for every applicant (was one request per applicant,
+  // which could mean 200 simultaneous calls and made the page time out).
+  const res = await callAPI("getNominationCounts", { batch_id: batch.batch_id });
+  if (res.status === "ok") {
+    const counts = res.counts || {};
+    applicants.forEach(a => {
+      nominationCounts[a.applicant_id] = counts[a.applicant_id] || 0;
+    });
+  }
 }
 
 // ── Station bar ───────────────────────────────────────────────

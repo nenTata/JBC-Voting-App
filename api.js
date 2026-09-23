@@ -13,7 +13,7 @@
 //
 // OFFLINE / SPEED BEHAVIOUR
 //   • Member-facing READ calls are saved on the device. If the
-//     network is slow (> 8s) or offline, the saved copy is shown.
+//     network is slow (> 30s) or offline, the saved copy is shown.
 //   • getApplicants / getSettings rarely change during deliberation,
 //     so they load instantly from the saved copy (refreshed in the
 //     background). Any write (add/edit/delete) clears them.
@@ -30,14 +30,14 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbyxPnZRtC-lFbSGuEk7R1cR
 
 // ── Offline cache settings ───────────────────────────────────
 const CACHE_PREFIX         = "jbc_cache:";
-const NETWORK_TIMEOUT_MS   = 8000;            // give up on slow reads after 8s
+const NETWORK_TIMEOUT_MS   = 30000;           // give up on slow reads after 30s (Apps Script can be slow)
 const FAST_READ_MAX_AGE_MS = 10 * 60 * 1000;  // 10 min
 
 // Reads that may fall back to a saved copy (member-facing only —
 // admin data such as members is intentionally NOT stored).
 const CACHEABLE_READS = [
   "getBatches", "getStations", "getApplicants",
-  "getVotes", "getSettings", "getNominationCount"
+  "getVotes", "getSettings", "getNominationCount", "getNominationCounts"
 ];
 
 // Reads that rarely change → served instantly from the saved copy.
@@ -242,7 +242,7 @@ async function callAPICore(action, data = {}) {
     return res;
   }
 
-  // 3) Other cacheable reads: network first (8s), saved copy as fallback.
+  // 3) Other cacheable reads: network first (30s), saved copy as fallback.
   try {
     const res = await fetchAPI(action, data, NETWORK_TIMEOUT_MS);
     if (res.status === "ok") {

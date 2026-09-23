@@ -1,7 +1,11 @@
-// ==============
-// myvotes.js 
-// ==============
-
+// ============================================================
+// JBC VOTING SYSTEM — myvotes.js  (Phase 6: My Votes)
+// ============================================================
+// Shows a summary of all the logged-in member's nominations
+// across every station in the active batch.
+// Member can click Edit on any unlocked station to go back
+// to nominees.html for that station.
+// ============================================================
 
 // ── State ────────────────────────────────────────────────────
 let member     = null;
@@ -76,8 +80,12 @@ async function loadPage() {
     allVotes    = votesRes.votes       || [];
 
     // Fetch applicant lists for all stations in parallel so we have names
+    // Only stations where this member actually voted need names —
+    // fetching every station made this page slow and prone to timeouts.
+    const votedStationIds = new Set(allVotes.map(v => String(v.station_id)));
+    const stationsWithVotes = allStations.filter(s => votedStationIds.has(String(s.station_id)));
     const applicantResults = await Promise.all(
-      allStations.map(s =>
+      stationsWithVotes.map(s =>
         callAPI("getApplicants", { batch_id: batch.batch_id, station_id: s.station_id })
       )
     );
