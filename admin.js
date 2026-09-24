@@ -12,7 +12,8 @@ let activeBatch     = null;
 let allBatches      = [];
 let allStations     = [];
 let batchStations   = [];
-let allApplicants   = [];
+let allApplicants   = [];   // this batch's assignments (person + station)
+let applicantPool   = [];   // every person in the pool
 let allMembers      = [];
 let _confirmCb      = null;
 
@@ -727,31 +728,114 @@ async function loadBatchSummary() {
 // ============================================================
 // APPLICANTS
 // ============================================================
+const CLASSIFICATIONS = ["1st Preference", "2nd Preference", "Least Preferred", "Recently Appointed", "For Reporting"];
+
+// The add/edit form is built here (not in admin.html) so the page always
+// matches the applicant-pool logic below.
+function buildApplicantForm() {
+  const form = document.getElementById("newApplicantForm");
+  form.innerHTML = `
+    <h3 class="form-title" id="applicantFormTitle">Add Applicant</h3>
+    <input type="hidden" id="editApplicantId" />
+    <div class="form-row">
+      <div class="field-group field-group--full">
+        <label class="field-label">Full Name *
+          <span class="field-hint">(start typing to reuse someone already in the pool)</span></label>
+        <input class="field-input" type="text" id="newApplicantName" list="applicantPoolNames"
+               placeholder="Full legal name" autocomplete="off" />
+        <datalist id="applicantPoolNames"></datalist>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Pre-Judicature Rating <span class="field-hint">(optional)</span></label>
+        <input class="field-input" type="text" id="newApplicantBar" placeholder="e.g. 87.50" />
+      </div>
+      <div class="field-group">
+        <label class="field-label">Cases <span class="field-hint">(optional)</span></label>
+        <input class="field-input" type="text" id="newApplicantCases" placeholder="Pending/decided cases info" />
+      </div>
+      <div class="field-group">
+        <label class="field-label">Teaching Experience <span class="field-hint">(optional)</span></label>
+        <input class="field-input" type="text" id="newApplicantTeaching" placeholder="e.g. 5 years, UP Law" />
+      </div>
+      <div class="field-group field-group--full">
+        <label class="field-label">Other Credentials <span class="field-hint">(optional)</span></label>
+        <input class="field-input" type="text" id="newApplicantOther" placeholder="Other notable credentials" />
+      </div>
+    </div>
+
+    <div style="font-weight:700;font-size:14px;margin:4px 0 4px">Stations applied to (this batch)</div>
+    <p class="field-hint" style="margin:0 0 10px">
+      Application No. and Classification can be different for each station.
+    </p>
+    <div id="applicantAssignments"></div>
+    <button class="btn-secondary btn-sm" id="btnAddAssignment" type="button" style="margin-bottom:16px">
+      + Add another station
+    </button>
+
+    <div class="form-actions">
+      <button class="btn-danger" id="btnDeleteApplicantPool" type="button" style="display:none;margin-right:auto">
+        Delete applicant
+      </button>
+      <button class="btn-secondary" id="btnCancelApplicant" type="button">Cancel</button>
+      <button class="btn-primary" id="btnSaveApplicant" type="button">Save Applicant</button>
+    </div>
+  `;
+}
+
 function initApplicants() {
+  buildApplicantForm();
+
   document.getElementById("btnNewApplicant").addEventListener("click", () => showApplicantForm());
-  document.getElementById("btnCancelApplicant").addEventListener("click", () => {
-    document.getElementById("newApplicantForm").classList.add("hidden");
-    document.getElementById("editApplicantId").value = "";
-  });
+  document.getElementById("btnCancelApplicant").addEventListener("click", hideApplicantForm);
   document.getElementById("btnSaveApplicant").addEventListener("click", saveApplicant);
+  document.getElementById("btnAddAssignment").addEventListener("click", () => addAssignmentRow());
+  document.getElementById("newApplicantName").addEventListener("change", onApplicantNameChosen);
   document.getElementById("applicantStationFilter").addEventListener("change", renderApplicants);
+  document.getElementById("btnDeleteApplicantPool").addEventListener("click", () => {
+    const id   = document.getElementById("editApplicantId").value;
+    const name = document.getElementById("newApplicantName").value.trim();
+    confirmAction(
+      "Delete Applicant",
+      `Permanently delete "${name}" from the applicant pool? This removes them from every station and batch.`,
+      () => deleteApplicant(id)
+    );
+  });
+}
+
+function hideApplicantForm() {
+  document.getElementById("newApplicantForm").classList.add("hidden");
+  document.getElementById("editApplicantId").value = "";
+  document.getElementById("btnDeleteApplicantPool").style.display = "none";
 }
 
 async function loadApplicants() {
   if (!activeBatch) return;
-  const stRes = await callAPI("getStations", { batch_id: activeBatch.batch_id });
+
+  // Two requests at the same time (was: one request per station)
+  const [stRes, apRes] = await Promise.all([
+    callAPI("getStations", { batch_id: activeBatch.batch_id }),
+    callAPI("getApplicantAdminData", { batch_id: activeBatch.batch_id })
+  ]);
+
   if (stRes.status === "ok") {
     batchStations = stRes.stations || [];
     populateStationSelect("applicantStationFilter", batchStations, true);
-    populateStationSelect("newApplicantStation", batchStations);
   }
-  const apResults = await Promise.all(
-    batchStations.map(s =>
-      callAPI("getApplicants", { batch_id: activeBatch.batch_id, station_id: s.station_id })
-    )
-  );
-  allApplicants = apResults.flatMap(r => r.status === "ok" ? r.applicants : []);
+
+  if (apRes.status === "ok") {
+    allApplicants = apRes.applicants || [];
+    applicantPool = apRes.pool || [];
+    document.getElementById("applicantPoolNames").innerHTML =
+      applicantPool.map(p => `<option value="${esc(p.full_name)}"></option>`).join("");
+  } else {
+    showToast(apRes.message || "Failed to load applicants.", true);
+  }
   renderApplicants();
+}
+
+function stationLabel(station_id) {
+  const s = batchStations.find(x => String(x.station_id) === String(station_id));
+  return s ? `${s.court_station} (${s.court_type})` : station_id;
 }
 
 function renderApplicants() {
@@ -759,9 +843,13 @@ function renderApplicants() {
   const filterSid = document.getElementById("applicantStationFilter").value;
   list.innerHTML  = "";
 
-  const filtered = filterSid
+  const filtered = (filterSid
     ? allApplicants.filter(a => String(a.station_id) === String(filterSid))
-    : allApplicants;
+    : allApplicants.slice()
+  ).sort((a, b) =>
+    stationLabel(a.station_id).localeCompare(stationLabel(b.station_id)) ||
+    String(a.full_name).localeCompare(String(b.full_name))
+  );
 
   if (filtered.length === 0) {
     list.innerHTML = `<p style="color:var(--grey-500);font-style:italic;font-size:14px">No applicants found.</p>`;
@@ -769,84 +857,160 @@ function renderApplicants() {
   }
 
   filtered.forEach(a => {
-    const station = batchStations.find(s => s.station_id === a.station_id);
     const row = document.createElement("div");
     row.className = "data-row";
-    const clsPart = a.classification ? esc(a.classification) + " &bull; " : "";
+    const parts = [
+      a.classification ? esc(a.classification) : "",
+      a.application_no ? "App. No. " + esc(a.application_no) : "",
+      esc(stationLabel(a.station_id))
+    ].filter(Boolean).join(" &bull; ");
+
     row.innerHTML = `
       <div class="data-row-main">
         <div class="data-row-title">${esc(a.full_name)}</div>
-        <div class="data-row-sub">${clsPart}${esc(station?.court_station || a.station_id)}</div>
+        <div class="data-row-sub">${parts}</div>
       </div>
       <div class="data-row-actions">
         <button class="btn-secondary btn-sm" data-action="edit">Edit</button>
-        <button class="btn-danger btn-sm" data-action="delete">Delete</button>
+        <button class="btn-danger btn-sm" data-action="remove">Remove</button>
       </div>
     `;
     row.querySelector("[data-action='edit']").addEventListener("click", () => showApplicantForm(a));
-    row.querySelector("[data-action='delete']").addEventListener("click", () =>
-      confirmAction("Delete Applicant", `Delete "${a.full_name}"?`, () => deleteApplicant(a.applicant_id))
+    row.querySelector("[data-action='remove']").addEventListener("click", () =>
+      confirmAction(
+        "Remove from Station",
+        `Remove "${a.full_name}" from ${stationLabel(a.station_id)}? They stay in the applicant pool.`,
+        () => removeApplicantAssignment(a)
+      )
     );
     list.appendChild(row);
   });
 }
 
-function showApplicantForm(applicant = null) {
-  const form = document.getElementById("newApplicantForm");
-  document.getElementById("applicantFormTitle").textContent  = applicant ? "Edit Applicant" : "Add Applicant";
-  document.getElementById("editApplicantId").value           = applicant?.applicant_id        || "";
-  document.getElementById("newApplicantName").value          = applicant?.full_name            || "";
-  document.getElementById("newApplicantAppNo").value         = applicant?.application_no       || "";
-  document.getElementById("newApplicantCls").value           = applicant?.classification       || "";
-  document.getElementById("newApplicantBar").value           = applicant?.pre_judicature_rating || "";
-  document.getElementById("newApplicantCases").value         = applicant?.cases                || "";
-  document.getElementById("newApplicantTeaching").value      = applicant?.teaching_experience   || "";
-  document.getElementById("newApplicantOther").value         = applicant?.other_credentials     || "";
+// One "station applied to" row inside the form
+function addAssignmentRow(a = null) {
+  const wrap = document.getElementById("applicantAssignments");
+  const row  = document.createElement("div");
+  row.className = "assign-row";
+  row.style.cssText =
+    "display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;" +
+    "align-items:end;margin-bottom:12px;padding:12px;border:1.5px solid var(--grey-100);border-radius:8px";
 
-  if (applicant) {
-    const sel = document.getElementById("newApplicantStation");
-    if (sel.options.length <= 1) populateStationSelect("newApplicantStation", batchStations);
-    sel.value = applicant.station_id;
-    if (!sel.value) setTimeout(() => { sel.value = applicant.station_id; }, 150);
-  }
+  const stationOpts = batchStations
+    .map(s => `<option value="${esc(s.station_id)}">${esc(s.court_station)} (${esc(s.court_type)})</option>`)
+    .join("");
+  const clsOpts = CLASSIFICATIONS.map(c => `<option>${esc(c)}</option>`).join("");
+
+  row.innerHTML = `
+    <div class="field-group">
+      <label class="field-label">Station *</label>
+      <select class="field-input ar-station"><option value="">Select station…</option>${stationOpts}</select>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Application No. <span class="field-hint">(optional)</span></label>
+      <input class="field-input ar-appno" type="text" placeholder="e.g. 2025-001" />
+    </div>
+    <div class="field-group">
+      <label class="field-label">Classification <span class="field-hint">(optional)</span></label>
+      <select class="field-input ar-cls"><option value="">Select…</option>${clsOpts}</select>
+    </div>
+    <button class="btn-danger btn-sm ar-remove" type="button">Remove</button>
+  `;
+  wrap.appendChild(row);
+
+  row.querySelector(".ar-station").value = a ? a.station_id : "";
+  row.querySelector(".ar-appno").value   = a ? a.application_no : "";
+  row.querySelector(".ar-cls").value     = a ? a.classification : "";
+  row.querySelector(".ar-remove").addEventListener("click", () => row.remove());
+}
+
+// a = an assignment row from the list (or a pool person) → edit that person
+function showApplicantForm(a = null) {
+  const form   = document.getElementById("newApplicantForm");
+  const person = a ? (applicantPool.find(p => p.applicant_id === a.applicant_id) || a) : null;
+
+  document.getElementById("applicantFormTitle").textContent = a ? "Edit Applicant" : "Add Applicant";
+  document.getElementById("editApplicantId").value          = a ? a.applicant_id : "";
+  document.getElementById("newApplicantName").value         = person?.full_name             || "";
+  document.getElementById("newApplicantBar").value          = person?.pre_judicature_rating || "";
+  document.getElementById("newApplicantCases").value        = person?.cases                 || "";
+  document.getElementById("newApplicantTeaching").value     = person?.teaching_experience   || "";
+  document.getElementById("newApplicantOther").value        = person?.other_credentials     || "";
+
+  const wrap = document.getElementById("applicantAssignments");
+  wrap.innerHTML = "";
+  const mine = a ? allApplicants.filter(x => x.applicant_id === a.applicant_id) : [];
+  if (mine.length) mine.forEach(x => addAssignmentRow(x));
+  else addAssignmentRow();
+
+  document.getElementById("btnDeleteApplicantPool").style.display = a ? "" : "none";
 
   form.classList.remove("hidden");
   form.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+// Typing/picking a name that is already in the pool loads THAT person,
+// so new stations are added to them instead of creating a duplicate.
+function onApplicantNameChosen() {
+  if (document.getElementById("editApplicantId").value) return;
+  const typed = document.getElementById("newApplicantName").value.trim().toLowerCase();
+  if (!typed) return;
+  const match = applicantPool.find(p => String(p.full_name).toLowerCase() === typed);
+  if (!match) return;
+
+  const mine = allApplicants.filter(x => x.applicant_id === match.applicant_id);
+  showApplicantForm(mine[0] || match);
+  showToast("Existing applicant loaded — add or change their stations below.");
+}
+
 async function saveApplicant() {
-  const editId  = document.getElementById("editApplicantId").value;
+  const editId = document.getElementById("editApplicantId").value;
+  const rows = [...document.querySelectorAll("#applicantAssignments .assign-row")].map(r => ({
+    station_id:     r.querySelector(".ar-station").value,
+    application_no: r.querySelector(".ar-appno").value.trim(),
+    classification: r.querySelector(".ar-cls").value
+  }));
+
   const payload = {
-    station_id:            document.getElementById("newApplicantStation").value,
+    batch_id:              activeBatch.batch_id,
+    applicant_id:          editId,
     full_name:             document.getElementById("newApplicantName").value.trim(),
-    application_no:        document.getElementById("newApplicantAppNo").value.trim(),
-    classification:        document.getElementById("newApplicantCls").value,
     pre_judicature_rating: document.getElementById("newApplicantBar").value.trim(),
     cases:                 document.getElementById("newApplicantCases").value.trim(),
     teaching_experience:   document.getElementById("newApplicantTeaching").value.trim(),
-    other_credentials:     document.getElementById("newApplicantOther").value.trim()
+    other_credentials:     document.getElementById("newApplicantOther").value.trim(),
+    assignments:           rows
   };
 
-  if (!payload.station_id || !payload.full_name) {
-    return showToast("Station and full name are required.", true);
+  if (!payload.full_name) return showToast("Full name is required.", true);
+  if (rows.some(r => !r.station_id)) {
+    return showToast("Choose a station for every row (or remove the empty row).", true);
   }
+  if (!editId && rows.length === 0) return showToast("Add at least one station.", true);
 
-  const res = editId
-    ? await callAPI("editApplicant", { applicant_id: editId, ...payload })
-    : await callAPI("addApplicant",  { batch_id: activeBatch.batch_id, ...payload });
-
+  const res = await callAPI("saveApplicant", payload);
   if (res.status === "ok") {
     showToast(editId ? "Applicant updated." : "Applicant added.");
-    document.getElementById("newApplicantForm").classList.add("hidden");
-    document.getElementById("editApplicantId").value = "";
+    hideApplicantForm();
     loadApplicants();
   } else showToast(res.message || "Failed.", true);
 }
 
-async function deleteApplicant(applicant_id) {
-  const res = await callAPI("deleteApplicant", { applicant_id });
-  if (res.status === "ok") { showToast("Applicant deleted."); loadApplicants(); }
+async function removeApplicantAssignment(a) {
+  const res = await callAPI("removeApplicantFromStation", { assignment_id: a.assignment_id });
+  if (res.status === "ok") { showToast("Removed from station."); loadApplicants(); }
   else showToast(res.message || "Failed.", true);
+}
+
+async function deleteApplicant(applicant_id, force = false) {
+  const res = await callAPI("deleteApplicant", { applicant_id, force });
+  if (res.status === "ok") {
+    showToast("Applicant deleted.");
+    hideApplicantForm();
+    loadApplicants();
+  } else if (res.status === "warning") {
+    confirmAction("Delete Applicant", res.message, () => deleteApplicant(applicant_id, true));
+  } else showToast(res.message || "Failed.", true);
 }
 
 // ============================================================

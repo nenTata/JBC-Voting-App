@@ -14,11 +14,24 @@
 const REFRESH_INTERVAL_MS = 8000;
 
 const REGION_ORDER = [
-  "NCR","CAR",
+  "NCR","NCJR",
   "Region 1","Region 2","Region 3","Region 4","Region 5",
   "Region 6","Region 7","Region 8","Region 9","Region 10",
-  "Region 11","Region 12","BARMM"
+  "Region 11","Region 12"//,"BARMM"
 ];
+
+// Appellate courts are always shown in this order: SC, CA, CTA, SB (Sandiganbayan),
+// then the rest. Stations of the same court keep the order they have in the sheet.
+const APPELLATE_ORDER = ["SC", "CA", "CTA", "SB", "OMB", "LEB"];
+
+function appellateRank(court_type) {
+  const i = APPELLATE_ORDER.indexOf(String(court_type || "").trim().toUpperCase());
+  return i === -1 ? APPELLATE_ORDER.length : i;   // unknown types go last
+}
+
+function sortAppellate(list) {
+  return [...list].sort((a, b) => appellateRank(a.court_type) - appellateRank(b.court_type));
+}
 
 // ── State ─────────────────────────────────────────────────────
 let refreshTimer  = null;
@@ -140,7 +153,7 @@ function renderDashboard(res) {
 
   dashboardOut.innerHTML = "";
 
-  const appellate   = stations.filter(s => s.court_category === "Appellate");
+  const appellate   = sortAppellate(stations.filter(s => s.court_category === "Appellate"));
   const lowerCourts = stations.filter(s => s.court_category !== "Appellate");
 
   // ── Appellate ──

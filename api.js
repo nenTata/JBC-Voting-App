@@ -22,7 +22,7 @@
 // LOADING INDICATOR
 //   • Every callAPI() automatically shows a top progress bar and a
 //     "Loading… / Saving…" pill if it takes longer than 350ms.
-//   • Turns amber with "slow connection" after 6 seconds.
+//   • Turns amber with "slow connection" after 15 seconds.
 //   • Live Dashboard auto-refresh is silent (see SILENT_ACTIONS).
 // ============================================================
 
@@ -76,22 +76,80 @@ function clearAllCache() {
 }
 
 // ── Offline badge ────────────────────────────────────────────
+// Red badge  : "No connection — showing saved data"
+//              While it is showing, the app quietly re-checks the server
+//              every 8 seconds (and instantly when the phone reports it is
+//              back online).
+// Green badge: "Back online — tap to refresh". Tapping reloads the page
+//              with fresh data; it disappears by itself after 10 seconds.
+// The badge is removed immediately when a page load gets fresh data.
+const RECOVERY_CHECK_MS = 8000;
+let recoveryTimer = null;
+
 function showOfflineBadge(on) {
   if (!document.body) return;
   let el = document.getElementById("jbc-offline-badge");
-  if (!on) { if (el) el.remove(); return; }
-  if (el) return;
+
+  if (!on) {
+    if (el) el.remove();
+    stopRecovery();
+    return;
+  }
+  if (el && el.dataset.state === "offline") return;
+  if (el) el.remove();
+
   el = document.createElement("div");
   el.id = "jbc-offline-badge";
-  el.textContent = "⚠ Offline — showing saved data";
+  el.dataset.state = "offline";
+  el.textContent = "⚠ No connection — showing saved data";
   el.style.cssText =
     "position:fixed;top:68px;left:50%;transform:translateX(-50%);" +
     "background:#92600a;color:#fff;font:600 13px sans-serif;" +
     "padding:6px 14px;border-radius:99px;z-index:9999;" +
     "box-shadow:0 2px 8px rgba(0,0,0,.25);pointer-events:none";
   document.body.appendChild(el);
+  startRecovery();
 }
-window.addEventListener("online", () => showOfflineBadge(false));
+
+// Server answered → connection is good again.
+function connectionRestored() {
+  stopRecovery();
+  const el = document.getElementById("jbc-offline-badge");
+  if (!el || el.dataset.state !== "offline") return;
+
+  el.dataset.state = "restored";
+  el.textContent = "✓ Back online — tap to refresh";
+  el.style.background    = "#075620";
+  el.style.pointerEvents = "auto";
+  el.style.cursor        = "pointer";
+  el.onclick = () => window.location.reload();
+  setTimeout(() => {
+    if (el.dataset.state === "restored") el.remove();
+  }, 10000);
+}
+
+function startRecovery() {
+  if (recoveryTimer) return;
+  recoveryTimer = setInterval(checkRecovery, RECOVERY_CHECK_MS);
+}
+
+function stopRecovery() {
+  clearInterval(recoveryTimer);
+  recoveryTimer = null;
+}
+
+// Small silent request to see whether the server is reachable again.
+async function checkRecovery() {
+  if (!document.getElementById("jbc-offline-badge")) { stopRecovery(); return; }
+  try {
+    const res = await fetchAPI("getBatches", {}, 10000);
+    if (res && res.status === "ok") connectionRestored();
+  } catch { /* still offline — try again later */ }
+}
+
+window.addEventListener("online", () => {
+  if (document.getElementById("jbc-offline-badge")) checkRecovery();
+});
 
 // ── Raw network call (with optional timeout) ─────────────────
 // Uses text/plain to bypass Apps Script CORS preflight.
@@ -125,12 +183,15 @@ async function fetchAPI(action, data, timeoutMs) {
 // stations, nominees, admin actions, etc.) — no per-page code.
 //   • A green progress bar slides across the top of the screen.
 //   • A pill at the bottom says "Loading…" (or "Saving…" for writes).
-//   • After 6s it turns amber: "Still working… slow connection".
+//   • After 15s it turns amber: "Still working… slow connection".
+// Layering: sits ABOVE modals (z-index 500) but BELOW toast messages
+// (z-index 600), and the pill floats above the toast area, so success /
+// error notifications are never covered.
 // It only appears if a call takes longer than 350ms, so fast
 // responses never flicker. It never blocks taps or clicks.
 const SILENT_ACTIONS     = ["getDashboardData"]; // auto-refresh polling — no indicator
 const BUSY_SHOW_DELAY_MS = 350;
-const BUSY_SLOW_MS       = 6000;
+const BUSY_SLOW_MS       = 15000;
 
 let busyCount = 0, busyShowTimer = null, busySlowTimer = null, busyHideTimer = null;
 
@@ -139,7 +200,7 @@ function ensureBusyUI() {
 
   const style = document.createElement("style");
   style.textContent = `
-    #jbc-busy{position:fixed;inset:0;pointer-events:none;z-index:10000;opacity:0;transition:opacity .2s}
+    #jbc-busy{position:fixed;inset:0;pointer-events:none;z-index:550;opacity:0;transition:opacity .2s}
     #jbc-busy.on{opacity:1}
     .jbc-busy-bar{position:absolute;top:0;left:0;right:0;height:4px;background:rgba(41,148,38,.18);overflow:hidden}
     .jbc-busy-bar::after{content:"";position:absolute;top:0;bottom:0;width:40%;
@@ -147,7 +208,7 @@ function ensureBusyUI() {
       animation:jbc-slide 1.1s ease-in-out infinite}
     @keyframes jbc-slide{0%{left:-40%}100%{left:100%}}
     .jbc-busy-pill{position:absolute;left:50%;transform:translateX(-50%);
-      bottom:calc(20px + env(safe-area-inset-bottom,0px));
+      bottom:calc(110px + env(safe-area-inset-bottom,0px));
       display:flex;align-items:center;gap:10px;background:#075620;color:#fff;
       font:600 14px/1.25 system-ui,sans-serif;padding:10px 18px;border-radius:99px;
       box-shadow:0 4px 16px rgba(0,0,0,.3);max-width:calc(100% - 32px);text-align:left}
@@ -225,7 +286,9 @@ async function callAPICore(action, data = {}) {
     const hit = readCache(key);
     if (hit && Date.now() - hit.t < FAST_READ_MAX_AGE_MS) {
       fetchAPI(action, data, NETWORK_TIMEOUT_MS)
-        .then(res => { if (res.status === "ok") writeCache(key, res); })
+        .then(res => {
+          if (res.status === "ok") { writeCache(key, res); connectionRestored(); }
+        })
         .catch(() => {});
       return hit.res;
     }
@@ -238,6 +301,7 @@ async function callAPICore(action, data = {}) {
       throw new Error("You are offline. Please reconnect and try again.");
     }
     const res = await fetchAPI(action, data);
+    connectionRestored();
     if (isWriteAction(action) && res.status === "ok") invalidateCache(action);
     return res;
   }
