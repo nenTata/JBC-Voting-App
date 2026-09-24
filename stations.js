@@ -1,6 +1,7 @@
 // -- Judicial Regions -- //
 const REGION_ORDER = [
-  "NCJR",
+  "NCR",    // always shown first
+  "NCJR",   // (kept in case some stations still use this spelling)
   "Region 1",
   "Region 2",
   "Region 3",
@@ -14,6 +15,36 @@ const REGION_ORDER = [
   "Region 11",
   "Region 12"
 ];
+
+// Appellate courts are always shown in this order: SC, CA, CTA, SB (Sandiganbayan),
+// then the rest. Stations of the same court keep the order they have in the sheet.
+// The court is recognised from its court_type (SC, CA, CTA, SB, OMB, LEB) and also
+// from full names such as "Supreme Court" or "Court of Appeals", so it still works
+// if the sheet was filled in with the long names.
+const APPELLATE_ORDER = ["SC", "CA", "CTA", "SB", "OMB", "LEB"];
+const APPELLATE_MATCH = [            // checked in this order (CTA before CA)
+  ["SC",  /\bSC\b|SUPREME/],
+  ["CTA", /\bCTA\b|TAX APPEALS/],
+  ["CA",  /\bCA\b|COURT OF APPEALS/],
+  ["SB",  /\bSB\b|SANDIGANBAYAN/],
+  ["OMB", /\bOMB\b|OMBUDSMAN/],
+  ["LEB", /\bLEB\b|LEGAL EDUCATION/]
+];
+
+function appellateRank(station) {
+  const texts = [station.court_type, station.court_station]
+    .map(t => String(t || "").toUpperCase());
+  for (const text of texts) {                       // court_type first, then station name
+    for (const [key, re] of APPELLATE_MATCH) {
+      if (re.test(text)) return APPELLATE_ORDER.indexOf(key);
+    }
+  }
+  return APPELLATE_ORDER.length;                    // unknown → last
+}
+
+function sortAppellate(list) {
+  return [...list].sort((a, b) => appellateRank(a) - appellateRank(b));
+}
 
 // -- State -- //
 let allStations  = [];
@@ -113,7 +144,7 @@ function renderStations() {
   stationsOut.classList.remove("hidden");
   stateNoMatch.classList.add("hidden");
 
-  const appellate   = filtered.filter(s => s.court_category === "Appellate");
+  const appellate   = sortAppellate(filtered.filter(s => s.court_category === "Appellate"));
   const lowerCourts = filtered.filter(s => s.court_category === "Lower Court");
 
   // ── Appellate group ──

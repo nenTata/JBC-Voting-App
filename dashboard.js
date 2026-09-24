@@ -14,23 +14,40 @@
 const REFRESH_INTERVAL_MS = 8000;
 
 const REGION_ORDER = [
-  "NCR","NCJR",
+  "NCR","CAR",
   "Region 1","Region 2","Region 3","Region 4","Region 5",
   "Region 6","Region 7","Region 8","Region 9","Region 10",
-  "Region 11","Region 12"//,"BARMM"
+  "Region 11","Region 12","BARMM"
 ];
 
 // Appellate courts are always shown in this order: SC, CA, CTA, SB (Sandiganbayan),
 // then the rest. Stations of the same court keep the order they have in the sheet.
+// The court is recognised from its court_type (SC, CA, CTA, SB, OMB, LEB) and also
+// from full names such as "Supreme Court" or "Court of Appeals", so it still works
+// if the sheet was filled in with the long names.
 const APPELLATE_ORDER = ["SC", "CA", "CTA", "SB", "OMB", "LEB"];
+const APPELLATE_MATCH = [            // checked in this order (CTA before CA)
+  ["SC",  /\bSC\b|SUPREME/],
+  ["CTA", /\bCTA\b|TAX APPEALS/],
+  ["CA",  /\bCA\b|COURT OF APPEALS/],
+  ["SB",  /\bSB\b|SANDIGANBAYAN/],
+  ["OMB", /\bOMB\b|OMBUDSMAN/],
+  ["LEB", /\bLEB\b|LEGAL EDUCATION/]
+];
 
-function appellateRank(court_type) {
-  const i = APPELLATE_ORDER.indexOf(String(court_type || "").trim().toUpperCase());
-  return i === -1 ? APPELLATE_ORDER.length : i;   // unknown types go last
+function appellateRank(station) {
+  const texts = [station.court_type, station.court_station]
+    .map(t => String(t || "").toUpperCase());
+  for (const text of texts) {                       // court_type first, then station name
+    for (const [key, re] of APPELLATE_MATCH) {
+      if (re.test(text)) return APPELLATE_ORDER.indexOf(key);
+    }
+  }
+  return APPELLATE_ORDER.length;                    // unknown → last
 }
 
 function sortAppellate(list) {
-  return [...list].sort((a, b) => appellateRank(a.court_type) - appellateRank(b.court_type));
+  return [...list].sort((a, b) => appellateRank(a) - appellateRank(b));
 }
 
 // ── State ─────────────────────────────────────────────────────
