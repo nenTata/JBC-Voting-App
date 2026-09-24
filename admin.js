@@ -14,6 +14,9 @@ let allStations     = [];
 let batchStations   = [];
 let allApplicants   = [];   // this batch's assignments (person + station)
 let applicantPool   = [];   // every person in the pool
+let applicantView   = "batch";  // "batch" (assignments) or "pool" (everyone)
+let poolSelected    = new Set();
+const POOL_RENDER_LIMIT = 200;
 let allMembers      = [];
 let _confirmCb      = null;
 
@@ -784,6 +787,7 @@ function buildApplicantForm() {
 
 function initApplicants() {
   buildApplicantForm();
+  buildApplicantToolbar();
 
   document.getElementById("btnNewApplicant").addEventListener("click", () => showApplicantForm());
   document.getElementById("btnCancelApplicant").addEventListener("click", hideApplicantForm);
@@ -820,13 +824,24 @@ async function loadApplicants() {
   if (stRes.status === "ok") {
     batchStations = stRes.stations || [];
     populateStationSelect("applicantStationFilter", batchStations, true);
+    populateStationSelect("bulkStation", batchStations);
   }
 
+  const notice = document.getElementById("applicantNotice");
   if (apRes.status === "ok") {
     allApplicants = apRes.applicants || [];
     applicantPool = apRes.pool || [];
     document.getElementById("applicantPoolNames").innerHTML =
       applicantPool.map(p => `<option value="${esc(p.full_name)}"></option>`).join("");
+
+    if (apRes.needs_migration) {
+      notice.textContent =
+        "⚠ The Applicants sheet is still in the old format (it has batch_id / station_id columns), " +
+        "so applicants can't be assigned yet. In Apps Script, run migrateApplicantsToPool once, then reload this page.";
+      notice.style.display = "";
+    } else {
+      notice.style.display = "none";
+    }
   } else {
     showToast(apRes.message || "Failed to load applicants.", true);
   }
@@ -838,21 +853,89 @@ function stationLabel(station_id) {
   return s ? `${s.court_station} (${s.court_type})` : station_id;
 }
 
-function renderApplicants() {
-  const list      = document.getElementById("applicantList");
-  const filterSid = document.getElementById("applicantStationFilter").value;
-  list.innerHTML  = "";
+// ── Toolbar: view switch, search, bulk-assign bar ────────────
+function buildApplicantToolbar() {
+  const list = document.getElementById("applicantList");
+  const bar  = document.createElement("div");
+  bar.id = "applicantToolbar";
+  bar.innerHTML = `
+    <div id="applicantNotice"
+         style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:8px;background:#fff4d6;color:#7a5200;font-size:13px;line-height:1.4"></div>
 
-  const filtered = (filterSid
-    ? allApplicants.filter(a => String(a.station_id) === String(filterSid))
-    : allApplicants.slice()
-  ).sort((a, b) =>
-    stationLabel(a.station_id).localeCompare(stationLabel(b.station_id)) ||
-    String(a.full_name).localeCompare(String(b.full_name))
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+      <button class="btn-primary btn-sm" type="button" data-view="batch">In this batch</button>
+      <button class="btn-secondary btn-sm" type="button" data-view="pool">Applicant pool</button>
+      <input class="field-input" id="applicantSearch" type="search" placeholder="Search name…"
+             style="flex:1;min-width:150px;max-width:260px" />
+    </div>
+
+    <div id="poolBulkBar"
+         style="display:none;margin-bottom:14px;padding:12px 14px;border:1.5px solid var(--grey-100);border-radius:8px">
+      <div style="font-size:13px;margin-bottom:8px">
+        Tick applicants below, choose a court, then click <b>Assign selected</b>.
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <select class="field-input" id="bulkStation" style="flex:1;min-width:180px;max-width:300px"></select>
+        <select class="field-input" id="bulkCls" style="min-width:150px">
+          <option value="">Classification…</option>
+          ${CLASSIFICATIONS.map(c => `<option>${esc(c)}</option>`).join("")}
+        </select>
+        <button class="btn-primary btn-sm" type="button" id="btnBulkAssign">
+          Assign selected (<span id="bulkCount">0</span>)
+        </button>
+      </div>
+      <label style="display:flex;gap:6px;align-items:center;font-size:13px;margin-top:10px;cursor:pointer">
+        <input type="checkbox" id="poolUnassignedOnly" />
+        Show only applicants not yet assigned in this batch
+      </label>
+    </div>
+  `;
+  list.parentNode.insertBefore(bar, list);
+
+  bar.querySelectorAll("[data-view]").forEach(btn =>
+    btn.addEventListener("click", () => setApplicantView(btn.dataset.view))
   );
+  document.getElementById("applicantSearch").addEventListener("input", renderApplicants);
+  document.getElementById("poolUnassignedOnly").addEventListener("change", renderApplicants);
+  document.getElementById("btnBulkAssign").addEventListener("click", bulkAssignApplicants);
+}
+
+function setApplicantView(view) {
+  applicantView = view;
+  document.querySelectorAll("#applicantToolbar [data-view]").forEach(btn => {
+    btn.className = (btn.dataset.view === view ? "btn-primary" : "btn-secondary") + " btn-sm";
+  });
+  document.getElementById("poolBulkBar").style.display = view === "pool" ? "" : "none";
+  const filterRow = document.getElementById("applicantStationFilter").closest(".filter-row");
+  if (filterRow) filterRow.style.display = view === "pool" ? "none" : "";
+  renderApplicants();
+}
+
+function renderApplicants() {
+  const list = document.getElementById("applicantList");
+  list.innerHTML = "";
+  const q = (document.getElementById("applicantSearch").value || "").trim().toLowerCase();
+  if (applicantView === "pool") renderPoolList(list, q);
+  else renderBatchList(list, q);
+}
+
+// View 1 — who is assigned to which court in this batch
+function renderBatchList(list, q) {
+  const filterSid = document.getElementById("applicantStationFilter").value;
+
+  const filtered = allApplicants
+    .filter(a => !filterSid || String(a.station_id) === String(filterSid))
+    .filter(a => !q || String(a.full_name).toLowerCase().includes(q))
+    .sort((a, b) =>
+      stationLabel(a.station_id).localeCompare(stationLabel(b.station_id)) ||
+      String(a.full_name).localeCompare(String(b.full_name))
+    );
 
   if (filtered.length === 0) {
-    list.innerHTML = `<p style="color:var(--grey-500);font-style:italic;font-size:14px">No applicants found.</p>`;
+    list.innerHTML = `<p style="color:var(--grey-500);font-style:italic;font-size:14px">
+      No applicants assigned${q ? " matching your search" : " to a court in this batch yet"}.
+      ${applicantPool.length ? "Open the <b>Applicant pool</b> view to assign the applicants already in your sheet." : ""}
+    </p>`;
     return;
   }
 
@@ -885,6 +968,106 @@ function renderApplicants() {
     );
     list.appendChild(row);
   });
+}
+
+// View 2 — everyone in the pool (all the applicants in the Google Sheet)
+function renderPoolList(list, q) {
+  const courtsOf = {};
+  allApplicants.forEach(a => { courtsOf[a.applicant_id] = (courtsOf[a.applicant_id] || 0) + 1; });
+  const unassignedOnly = document.getElementById("poolUnassignedOnly").checked;
+
+  const people = applicantPool
+    .filter(p => !q || String(p.full_name).toLowerCase().includes(q))
+    .filter(p => !unassignedOnly || !courtsOf[p.applicant_id])
+    .sort((a, b) => String(a.full_name).localeCompare(String(b.full_name)));
+
+  updateBulkCount();
+
+  if (people.length === 0) {
+    list.innerHTML = `<p style="color:var(--grey-500);font-style:italic;font-size:14px">
+      ${applicantPool.length === 0
+        ? "The applicant pool is empty."
+        : "No applicants match."}
+    </p>`;
+    return;
+  }
+
+  const shown = people.slice(0, POOL_RENDER_LIMIT);
+
+  const head = document.createElement("div");
+  head.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px;font-size:13px";
+  head.innerHTML = `
+    <label style="display:flex;gap:6px;align-items:center;cursor:pointer">
+      <input type="checkbox" id="poolSelectAll" /> Select all shown
+    </label>
+    <span class="field-hint">
+      ${people.length > shown.length
+        ? `Showing the first ${shown.length} of ${people.length} — use the search box to narrow down.`
+        : `${people.length} applicant${people.length === 1 ? "" : "s"}`}
+    </span>
+  `;
+  list.appendChild(head);
+
+  const allTicked = () => shown.every(p => poolSelected.has(p.applicant_id));
+  const selectAll = head.querySelector("#poolSelectAll");
+  selectAll.checked = allTicked();
+  selectAll.addEventListener("change", () => {
+    shown.forEach(p => selectAll.checked ? poolSelected.add(p.applicant_id) : poolSelected.delete(p.applicant_id));
+    list.querySelectorAll("input[data-id]").forEach(cb => { cb.checked = selectAll.checked; });
+    updateBulkCount();
+  });
+
+  shown.forEach(p => {
+    const n   = courtsOf[p.applicant_id] || 0;
+    const sub = n ? `${n} court${n === 1 ? "" : "s"} in this batch` : "Not assigned in this batch";
+    const row = document.createElement("div");
+    row.className = "data-row";
+    row.innerHTML = `
+      <label style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer">
+        <input type="checkbox" data-id="${esc(p.applicant_id)}" />
+        <div class="data-row-main">
+          <div class="data-row-title">${esc(p.full_name)}</div>
+          <div class="data-row-sub">${sub}</div>
+        </div>
+      </label>
+      <div class="data-row-actions">
+        <button class="btn-secondary btn-sm" data-action="edit">Edit / assign</button>
+      </div>
+    `;
+    const cb = row.querySelector("input[data-id]");
+    cb.checked = poolSelected.has(p.applicant_id);
+    cb.addEventListener("change", () => {
+      cb.checked ? poolSelected.add(p.applicant_id) : poolSelected.delete(p.applicant_id);
+      selectAll.checked = allTicked();
+      updateBulkCount();
+    });
+    row.querySelector("[data-action='edit']").addEventListener("click", () => showApplicantForm(p));
+    list.appendChild(row);
+  });
+}
+
+function updateBulkCount() {
+  const el = document.getElementById("bulkCount");
+  if (el) el.textContent = poolSelected.size;
+}
+
+async function bulkAssignApplicants() {
+  const station_id     = document.getElementById("bulkStation").value;
+  const classification = document.getElementById("bulkCls").value;
+  const ids = [...poolSelected];
+
+  if (ids.length === 0) return showToast("Tick at least one applicant.", true);
+  if (!station_id)      return showToast("Choose a court first.", true);
+
+  const res = await callAPI("assignApplicantsToStation", {
+    batch_id: activeBatch.batch_id, station_id, classification, applicant_ids: ids
+  });
+  if (res.status === "ok") {
+    showToast(`${res.added} assigned to ${stationLabel(station_id)}` +
+              (res.skipped ? `, ${res.skipped} already there.` : "."));
+    poolSelected.clear();
+    loadApplicants();
+  } else showToast(res.message || "Failed.", true);
 }
 
 // One "station applied to" row inside the form

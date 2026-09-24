@@ -8,7 +8,7 @@
 // download everything fresh on next open.
 // ============================================================
 
-const CACHE_NAME = 'jbc-v5'; // ← bump this every update
+const CACHE_NAME = 'jbc-v6'; // ← bump this every update
 
 const FILES_TO_CACHE = [
   './',
@@ -115,9 +115,16 @@ async function staleWhileRevalidate(event) {
   const cache  = await caches.open(CACHE_NAME);
   const cached = await cache.match(req, { ignoreSearch: true });
 
-  const update = fetch(req)
+  // For our own files, ask the server if the file changed ("no-cache"
+  // = cheap check) instead of trusting the browser's HTTP cache.
+  // GitHub Pages tells browsers to keep files for ~10 minutes, which
+  // used to make the background refresh re-save the OLD copy.
+  const sameOrigin = new URL(req.url).origin === self.location.origin;
+  const netReq     = sameOrigin ? new Request(req.url, { cache: 'no-cache' }) : req;
+
+  const update = fetch(netReq)
     .then(res => {
-      if (res && (res.status === 200 || res.type === 'opaque')) {
+      if (res && !res.redirected && (res.status === 200 || res.type === 'opaque')) {
         cache.put(req, res.clone());
       }
       return res;
