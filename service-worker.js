@@ -8,7 +8,7 @@
 // download everything fresh on next open.
 // ============================================================
 
-const CACHE_NAME = 'jbc-v6'; // ← bump this every update
+const CACHE_NAME = 'jbc-v7'; // ← bump this every update
 
 const FILES_TO_CACHE = [
   './',
