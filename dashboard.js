@@ -328,7 +328,7 @@ function buildTallyBody(station, nominationLimit) {
 
     const met       = threshold > 0 && votes >= threshold;
     const barWidth  = Math.round((votes / maxVotes) * 100);
-    const limitWarn = nominationLimit > 0 && a.limit_exceeded
+    const limitWarn = a.limit_exceeded
       ? `<span class="limit-flag">⚠</span>` : "";
     const checkmark = met
       ? `<span class="tally-check">✓</span>`

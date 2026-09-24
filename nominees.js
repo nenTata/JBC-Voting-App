@@ -16,7 +16,8 @@ let applicants           = [];
 let selected             = [];      // applicant_ids in selection order
 let originalSelected     = [];      // applicant_ids that were already saved on the server (as of last load/save)
 let nominationCounts     = {};      // applicant_id → count
-let nominationLimit      = 0;
+let nominationLimit      = 0;       // most courts one applicant can be nominated in (this kind of court)
+let maxSelection         = 0;       // most applicants this member can pick in this court (0 = no limit)
 let pendingLimitApplicant= null;
 
 // ── DOM refs ─────────────────────────────────────────────────
@@ -108,7 +109,13 @@ async function loadPage() {
     ]);
 
     if (settingsRes.status === "ok") {
-      nominationLimit = Number(settingsRes.settings?.nomination_limit) || 0;
+      // Appellate and Lower Courts have their own limits
+      const st     = settingsRes.settings || {};
+      const kind   = station.court_category === "Appellate" ? "appellate" : "lower";
+      const own    = st["nomination_limit_" + kind];
+      const legacy = Number(st.nomination_limit) || 0;
+      nominationLimit = String(own ?? "").trim() !== "" ? (Number(own) || 0) : legacy;
+      maxSelection    = Number(st["max_selection_" + kind]) || 0;
     }
 
     if (applicantsRes.status !== "ok") {
@@ -144,7 +151,9 @@ async function loadPage() {
 async function loadNominationCounts() {
   // ONE request for every applicant (was one request per applicant,
   // which could mean 200 simultaneous calls and made the page time out).
-  const res = await callAPI("getNominationCounts", { batch_id: batch.batch_id });
+  const res = await callAPI("getNominationCounts", {
+    batch_id: batch.batch_id, court_category: station.court_category
+  });
   if (res.status === "ok") {
     const counts = res.counts || {};
     applicants.forEach(a => {
@@ -268,6 +277,12 @@ function handleCardToggle(a) {
     return;
   }
 
+  // Selection limit: a member can only pick so many applicants in one court
+  if (maxSelection > 0 && selected.length >= maxSelection) {
+    showSelectionLimitPopup();
+    return;
+  }
+
   const isLimitFlagged = nominationLimit > 0 && (nominationCounts[a.applicant_id] || 0) >= nominationLimit;
   if (isLimitFlagged) {
     pendingLimitApplicant = a;
@@ -275,6 +290,66 @@ function handleCardToggle(a) {
   } else {
     addToSelection(a);
   }
+}
+
+// ── Selection-limit pop-up ────────────────────────────────────
+// Built here (using the page's existing modal styles) so nominees.html
+// does not need to change. It stays on screen until the member taps OK.
+function showSelectionLimitPopup() {
+  let overlay = document.getElementById("selLimitOverlay");
+
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id        = "selLimitOverlay";
+    overlay.className = "modal-overlay hidden";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.innerHTML = `
+      <div class="modal modal-sm">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <span class="modal-eyebrow warn">Selection Limit Reached</span>
+            <h2 class="modal-name" id="selLimitTitle"></h2>
+          </div>
+          <button class="modal-close" id="selLimitClose" aria-label="Close">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="limit-warning-body">
+            <div class="limit-icon">⚠</div>
+            <p id="selLimitText"></p>
+            <p class="limit-note">To choose someone else, deselect one of your current nominees first.</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-modal-close" id="btnSelLimitOk">OK, I understand</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    overlay.querySelector("#selLimitClose").addEventListener("click", closeSelectionLimitPopup);
+    overlay.querySelector("#btnSelLimitOk").addEventListener("click", closeSelectionLimitPopup);
+    overlay.addEventListener("click", e => { if (e.target === overlay) closeSelectionLimitPopup(); });
+    document.addEventListener("keydown", e => { if (e.key === "Escape") closeSelectionLimitPopup(); });
+  }
+
+  const n = maxSelection;
+  overlay.querySelector("#selLimitTitle").textContent =
+    `Maximum of ${n} nominee${n === 1 ? "" : "s"}`;
+  overlay.querySelector("#selLimitText").textContent =
+    `You can select at most ${n} nominee${n === 1 ? "" : "s"} for this court, ` +
+    `and you have already selected ${selected.length}.`;
+  overlay.classList.remove("hidden");
+}
+
+function closeSelectionLimitPopup() {
+  const overlay = document.getElementById("selLimitOverlay");
+  if (overlay) overlay.classList.add("hidden");
 }
 
 function addToSelection(a) {
@@ -303,9 +378,10 @@ function refreshCards() {
 // ── Selection bar ─────────────────────────────────────────────
 function updateSelectionBar() {
   const n = selected.length;
+  const ofMax = maxSelection > 0 ? ` of ${maxSelection}` : "";
   selCount.innerHTML = n === 0
-    ? "No nominees selected"
-    : `<strong>${n}</strong> nominee${n !== 1 ? "s" : ""} selected`;
+    ? (maxSelection > 0 ? `No nominees selected (up to ${maxSelection})` : "No nominees selected")
+    : `<strong>${n}</strong>${ofMax} nominee${(maxSelection > 0 ? maxSelection : n) !== 1 ? "s" : ""} selected`;
   // Enable Save whenever the current selection differs from what's saved —
   // including clearing down to zero — not just when something is checked.
   const hasChanges = JSON.stringify([...selected].sort()) !== JSON.stringify([...originalSelected].sort());

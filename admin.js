@@ -1425,25 +1425,92 @@ async function loadLocks() {
 // ============================================================
 // SETTINGS
 // ============================================================
+// The settings card is built here so it always matches the four limits below.
+function buildSettingsCard() {
+  const old  = document.getElementById("nominationLimitInput");
+  const card = old ? old.closest(".form-card") : document.querySelector("#tab-settings .form-card");
+  if (!card) return;
+
+  const numberField = (id, label) => `
+    <div class="field-group">
+      <label class="field-label">${label}</label>
+      <input class="field-input" type="number" id="${id}" min="0" placeholder="0 = no limit" style="max-width:160px" />
+    </div>`;
+
+  card.innerHTML = `
+    <h3 class="form-title">Nomination Limit</h3>
+    <p class="form-desc">
+      The most <b>courts</b> one applicant can be nominated in during the active batch.
+      Members are warned when an applicant reaches it. Set to 0 for no limit.
+    </p>
+    <div class="form-row">
+      ${numberField("nominationLimitAppellate", "Appellate Courts")}
+      ${numberField("nominationLimitLower", "Lower Courts")}
+    </div>
+
+    <h3 class="form-title" style="margin-top:8px">Selection Limit per Member</h3>
+    <p class="form-desc">
+      The most <b>applicants</b> one member can nominate in <b>one</b> court
+      (for example, 20 out of 50 applicants). Members cannot go over this number.
+      Set to 0 for no limit.
+    </p>
+    <div class="form-row">
+      ${numberField("maxSelectionAppellate", "Appellate Courts")}
+      ${numberField("maxSelectionLower", "Lower Courts")}
+    </div>
+
+    <div class="form-actions">
+      <button class="btn-primary" id="btnSaveSettings">Save Settings</button>
+    </div>
+    <p class="save-status hidden" id="settingsSaveStatus">✓ Saved.</p>
+  `;
+}
+
 function initSettings() {
+  buildSettingsCard();
   document.getElementById("btnSaveSettings").addEventListener("click", saveSettings);
 }
 
 async function loadSettings() {
   const res = await callAPI("getSettings", {});
   if (res.status !== "ok") return;
-  document.getElementById("nominationLimitInput").value = res.settings?.nomination_limit ?? "";
+  const st = res.settings || {};
+
+  // A blank nomination limit falls back to the old single "nomination_limit"
+  const nom = key => String(st[key] ?? "").trim() !== "" ? st[key] : (st.nomination_limit ?? "");
+
+  document.getElementById("nominationLimitAppellate").value = nom("nomination_limit_appellate");
+  document.getElementById("nominationLimitLower").value     = nom("nomination_limit_lower");
+  document.getElementById("maxSelectionAppellate").value    = st.max_selection_appellate ?? "";
+  document.getElementById("maxSelectionLower").value        = st.max_selection_lower ?? "";
 }
 
 async function saveSettings() {
-  const val = document.getElementById("nominationLimitInput").value;
-  const res = await callAPI("updateSettings", { setting_key: "nomination_limit", setting_value: val });
-  if (res.status === "ok") {
+  const read = id => {
+    const v = document.getElementById(id).value.trim();
+    return v === "" ? 0 : Math.max(0, Math.floor(Number(v) || 0));   // blank = no limit
+  };
+  const entries = [
+    ["nomination_limit_appellate", read("nominationLimitAppellate")],
+    ["nomination_limit_lower",     read("nominationLimitLower")],
+    ["max_selection_appellate",    read("maxSelectionAppellate")],
+    ["max_selection_lower",        read("maxSelectionLower")]
+  ];
+
+  const results = await Promise.all(entries.map(([setting_key, setting_value]) =>
+    callAPI("updateSettings", { setting_key, setting_value })
+  ));
+
+  if (results.every(r => r.status === "ok")) {
     const status = document.getElementById("settingsSaveStatus");
     status.classList.remove("hidden");
     setTimeout(() => status.classList.add("hidden"), 2500);
     showToast("Settings saved.");
-  } else showToast(res.message || "Failed.", true);
+    loadSettings();
+  } else {
+    const failed = results.find(r => r.status !== "ok");
+    showToast(failed?.message || "Failed.", true);
+  }
 }
 
 // ============================================================
