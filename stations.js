@@ -1,7 +1,7 @@
 // -- Judicial Regions -- //
 const REGION_ORDER = [
-  "NCR",    // always shown first
-  "NCJR",   // (kept in case some stations still use this spelling)
+  "NCJR",   // National Capital Judicial Region — always shown first
+  "NCR",    // (kept in case some stations still use this spelling)
   "Region 1",
   "Region 2",
   "Region 3",
@@ -15,6 +15,14 @@ const REGION_ORDER = [
   "Region 11",
   "Region 12"
 ];
+
+// Matches a region to REGION_ORDER ignoring case and extra spaces,
+// so "ncjr", " NCJR ", "Ncjr" etc. are all treated as "NCJR".
+function regionRank(region) {
+  const clean = String(region || "").trim().toUpperCase();
+  const i = REGION_ORDER.findIndex(r => r.toUpperCase() === clean);
+  return i === -1 ? REGION_ORDER.length : i;
+}
 
 // Appellate courts are always shown in this order: SC, CA, CTA, SB (Sandiganbayan),
 // then the rest. Stations of the same court keep the order they have in the sheet.
@@ -167,10 +175,9 @@ function renderStations() {
       byRegion[r].push(s);
     });
 
-    const orderedRegions = [
-      ...REGION_ORDER.filter(r => byRegion[r]),
-      ...Object.keys(byRegion).filter(r => !REGION_ORDER.includes(r)).sort()
-    ];
+    const orderedRegions = Object.keys(byRegion).sort((a, b) =>
+      regionRank(a) - regionRank(b) || a.localeCompare(b)
+    );
 
     orderedRegions.forEach(region => {
       const lbl = document.createElement("div");
